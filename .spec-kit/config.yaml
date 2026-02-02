@@ -1,0 +1,153 @@
+# Spec-Kit Plus Configuration
+# Evolution of Todo - Phase II Full-Stack Web Application
+# Generated: 2026-01-19
+
+version: "1.0"
+
+project:
+  name: "Evolution of Todo"
+  description: "Progressive Todo application evolving from CLI to production-grade distributed system"
+  type: "web"  # single | web | mobile
+
+repository:
+  type: "monorepo"
+  structure:
+    frontend: "frontend/"
+    backend: "backend/"
+    specs: "specs/"
+    history: "history/"
+
+# Technology Stack
+stack:
+  frontend:
+    framework: "Next.js"
+    version: "16+"
+    language: "TypeScript"
+    styling: "Tailwind CSS"
+    auth: "Better Auth"
+
+  backend:
+    framework: "FastAPI"
+    language: "Python"
+    version: "3.13+"
+    package_manager: "uv"
+    orm: "SQLModel"
+
+  database:
+    type: "PostgreSQL"
+    provider: "Neon"
+    tier: "free"
+
+  hosting:
+    frontend: "Vercel"
+    backend: "Railway"
+    database: "Neon"
+
+# Authentication Configuration
+auth:
+  provider: "Better Auth"
+  plugins:
+    - jwt
+  secret_env: "BETTER_AUTH_SECRET"
+  token_format: "JWT"
+  algorithm: "HS256"
+
+# API Configuration
+api:
+  style: "REST"
+  versioning: false
+  base_path: "/api"
+  user_scoped: true
+  pattern: "/api/{user_id}/resource"
+  docs:
+    swagger: "/docs"
+    redoc: "/redoc"
+
+# Development Workflow
+workflow:
+  methodology: "SDD"  # Spec-Driven Development
+  testing: "TDD"      # Test-Driven Development
+  cycle: "Red-Green-Refactor"
+
+  phases:
+    - specify   # /sp.specify
+    - plan      # /sp.plan
+    - tasks     # /sp.tasks
+    - implement # /sp.implement
+
+# Agent Configuration
+agent:
+  type: "claude"
+  context_file: "CLAUDE.md"
+  rules_file: "AGENTS.md"
+
+  guidelines:
+    - "No manual coding - all via agent"
+    - "Spec references required for implementation"
+    - "TDD mandatory"
+    - "UV for Python package management"
+    - "SQLModel for ORM"
+
+# Features Configuration
+features:
+  current: "002-phase2-fullstack-webapp"
+  specs_dir: "specs/"
+
+  naming:
+    pattern: "{number}-{short-name}"
+    example: "002-phase2-fullstack-webapp"
+
+# History & Documentation
+history:
+  prompts_dir: "history/prompts/"
+  adr_dir: "history/adr/"
+
+  phr:
+    enabled: true
+    auto_create: true
+
+  adr:
+    enabled: true
+    auto_suggest: true
+
+# Constitution Reference
+constitution:
+  path: ".specify/memory/constitution.md"
+  version: "1.0.0"
+
+  principles:
+    - "Phased Evolution"
+    - "Spec-Driven Development"
+    - "Test-First (TDD)"
+    - "Clean Architecture"
+    - "API-First Design"
+    - "Observability"
+
+# Quality Gates
+gates:
+  pre_plan:
+    - "Constitution compliance check"
+    - "All NEEDS CLARIFICATION resolved"
+
+  pre_tasks:
+    - "Plan approved"
+    - "Research complete"
+    - "Data model defined"
+
+  pre_implement:
+    - "Tasks generated"
+    - "Test scenarios defined"
+
+# Environment Variables (templates)
+env_template:
+  backend:
+    - "DATABASE_URL"
+    - "BETTER_AUTH_SECRET"
+    - "CORS_ORIGINS"
+    - "ENVIRONMENT"
+
+  frontend:
+    - "BETTER_AUTH_SECRET"
+    - "BETTER_AUTH_URL"
+    - "NEXT_PUBLIC_API_URL"
+    - "DATABASE_URL"
