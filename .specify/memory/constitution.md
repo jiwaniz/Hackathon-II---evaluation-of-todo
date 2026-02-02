@@ -1,55 +1,253 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  SYNC IMPACT REPORT
+  ==================
+  Version change: 2.0.0 → 2.0.1 (PATCH)
+
+  Modified sections:
+  - Technology Stack updated to free tier options
+  - Phase III: OpenAI → Google AI Studio (Gemini)
+  - Phase V: Added free tier cloud alternatives
+
+  Templates requiring updates:
+  - ✅ .specify/templates/plan-template.md (compatible)
+  - ✅ .specify/templates/spec-template.md (compatible)
+  - ✅ .specify/templates/tasks-template.md (compatible)
+
+  Follow-up TODOs: None
+-->
+
+# Evolution of Todo Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Phase Isolation
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Each phase MUST run independently with its own complete stack:
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+| Phase | Description | Technology Stack (Free Tier) |
+|-------|-------------|------------------------------|
+| **Phase I** | In-Memory Python Console App | Python, Claude Code, Spec-Kit Plus |
+| **Phase II** | Full-Stack Web Application | Next.js, FastAPI, SQLModel, Neon DB (free) |
+| **Phase III** | AI-Powered Todo Chatbot | Google AI Studio (Gemini), Agents SDK, MCP SDK |
+| **Phase IV** | Local Kubernetes Deployment | Docker, Minikube, Helm, kubectl-ai, kagent |
+| **Phase V** | Advanced Cloud Deployment | Kafka (Upstash free), Dapr, Fly.io / Railway (free) |
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Phase Isolation Rules:
+- Each phase MUST be fully functional standalone
+- No cross-phase dependencies at runtime
+- Phase transitions require explicit approval
+- Code from prior phases MAY be refactored but MUST NOT break phase independence
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### II. Spec-Driven Development (SDD)
 
-### [PRINCIPLE_6_NAME]
+All development MUST follow the Specify → Plan → Tasks → Implement workflow:
+- **Specify**: Requirements captured in `specs/<phase>/spec.md` with user stories and acceptance criteria
+- **Plan**: Technical design documented in `specs/<phase>/plan.md` with architecture decisions
+- **Tasks**: Actionable work items in `specs/<phase>/tasks.md` with clear dependencies
+- **Implement**: Code written only after tasks are approved and Task ID is referenced
 
+No code generation is permitted without an approved Task ID.
 
-[PRINCIPLE__DESCRIPTION]
+### III. Test-First (NON-NEGOTIABLE)
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+TDD is mandatory for all code changes:
+- Tests MUST be written before implementation
+- Tests MUST fail before implementation (Red phase)
+- Implementation MUST make tests pass (Green phase)
+- Code MUST be cleaned up while keeping tests green (Refactor phase)
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+The Red-Green-Refactor cycle is strictly enforced. No exceptions.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+### IV. Clean Architecture
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Code MUST follow separation of concerns and domain-driven design:
+- **Domain Layer**: Business logic and entities (no framework dependencies)
+- **Application Layer**: Use cases and service orchestration
+- **Infrastructure Layer**: Database, external APIs, frameworks
+- **Presentation Layer**: CLI, API endpoints, UI components
+
+Dependencies MUST point inward (infrastructure depends on domain, not vice versa).
+
+### V. API-First Design
+
+All interfaces MUST be designed before implementation:
+- RESTful APIs with OpenAPI/Swagger specifications
+- CLI interfaces with clear argument patterns and help documentation
+- Internal service contracts defined before coding
+- Input validation at system boundaries; trust internal code
+
+### VI. Observability
+
+Production readiness requires comprehensive observability:
+- Structured logging with consistent format (JSON recommended)
+- Metrics collection for performance monitoring
+- Distributed tracing for request tracking (when distributed)
+- Health check endpoints for all services
+
+Observability is built-in, not bolted-on.
+
+### VII. Agentic Dev Stack
+
+Build with reusable intelligence through agents, sub-agents, and skills:
+- **Agents**: Autonomous units with specific responsibilities (e.g., code-review, test-runner)
+- **Sub-agents**: Specialized workers delegated by parent agents
+- **Skills**: Reusable capabilities invoked via `/sp.<skill>` commands
+
+Agentic Development Rules:
+- Prefer MCP tools and CLI commands over internal knowledge
+- Treat agents as first-class tools for discovery, verification, and execution
+- Create PHR (Prompt History Record) for every significant interaction
+- Be token-sensitive: minimize context, maximize precision
+
+## Agentic Architecture
+
+* **Spec-Driven Development (SDD):** No code may be written until a requirement is specified in `speckit.specify`, architected in `speckit.plan`, and broken down into `speckit.tasks`.
+* **No Manual Coding:** The engineer is strictly prohibited from writing code manually. All implementation must be generated by Claude Code based on refined specs.
+* **Statelessness:** The backend server must remain stateless. All conversation and application states must persist in the database (Neon DB).
+**Decoupling via Kafka**: Advanced features (reminders, recurring tasks) must use an event-driven architecture rather than direct API calls.
+* **Abstraction via Dapr**: Infrastructure concerns (State, Pub/Sub, Secrets) should be abstracted through Dapr sidecars to avoid vendor lock-in and tight coupling.
+
+## Repository & Development Standards
+* **Monorepo Strategy**: The project must maintain a structured monorepo with dedicated `/frontend`, `/backend`, and `/specs` directories.
+* **Clean Code**: All generated code must follow professional Python (PEP 8) and TypeScript standards, prioritizing readability, type safety, and 90%+ test coverage.
+
+## Security & Authentication
+* **Unified Identity**: Authentication is managed via the designated auth provider per phase (Better Auth for Phase II, Supabase Auth for Phase III+). All API requests must be verified via JWT tokens.
+* **User Isolation**: Every database query and API response must be filtered by the authenticated `user_id` to ensure total data privacy.
+
+### Agent Structure
+
+```
+agents/
+├── core/                 # Core agent capabilities
+│   ├── spec-agent/       # Specification generation
+│   ├── plan-agent/       # Implementation planning
+│   └── task-agent/       # Task generation and tracking
+├── phase-specific/       # Phase-specific agents
+│   ├── phase1/           # CLI-focused agents
+│   ├── phase2/           # Web app agents
+│   ├── phase3/           # AI/chatbot agents
+│   ├── phase4/           # K8s deployment agents
+│   └── phase5/           # Cloud deployment agents
+└── skills/               # Reusable skills
+    ├── sp.specify        # Create specifications
+    ├── sp.plan           # Generate plans
+    ├── sp.tasks          # Generate tasks
+    ├── sp.implement      # Execute implementation
+    └── sp.phr            # Record prompt history
+```
+
+### Token Sensitivity
+
+Per AGENTS.md, all agents MUST:
+- Always reference tasks from speckit.tasks
+- Stop code generation until Task ID is approved
+- Follow Spec-Driven Development (Specify → Plan → Tasks → Implement)
+- Phase-specific specs only
+- Only generate code if a Task ID is referenced
+
+## Technology Stack by Phase
+
+### Phase I: In-Memory Python Console App
+
+| Component | Technology | Free Tier |
+|-----------|------------|-----------|
+| Language | Python 3.11+ | Open source |
+| Development | Claude Code | Free (with limits) |
+| Spec Management | Spec-Kit Plus | Open source |
+| Testing | pytest | Open source |
+| CLI Framework | argparse | Built-in |
+
+### Phase II: Full-Stack Web Application
+
+| Component | Technology | Free Tier |
+|-----------|------------|-----------|
+| Frontend | Next.js (React) | Open source |
+| Backend | FastAPI | Open source |
+| ORM | SQLModel | Open source |
+| Database | Neon DB (PostgreSQL) | 0.5 GB free |
+| Hosting | Vercel / Render | Free tier available |
+| Testing | pytest + Jest | Free |
+
+### Phase III: AI-Powered Todo Chatbot
+
+| Component | Technology | Free Tier |
+|-----------|------------|-----------|
+| LLM Provider | Google AI Studio (Gemini) | 60 req/min free |
+| Agent Framework | Agents SDK | Open source |
+| Tool Integration | Official MCP SDK | Open source |
+| Alternative LLMs | Groq, Ollama (local) | Free / Local |
+| Testing | pytest + integration tests | Free |
+
+### Phase IV: Local Kubernetes Deployment
+
+| Component | Technology | Free Tier |
+|-----------|------------|-----------|
+| Containerization | Docker Desktop | Free for personal |
+| Local K8s | Minikube | Open source |
+| Package Management | Helm | Open source |
+| AI K8s CLI | kubectl-ai | Open source |
+| K8s Agent | kagent | Open source |
+
+### Phase V: Advanced Cloud Deployment
+
+| Component | Technology | Free Tier |
+|-----------|------------|-----------|
+| Event Streaming | Upstash Kafka | 10K msg/day free |
+| Runtime | Dapr | Open source |
+| Cloud Platform | Fly.io / Railway | Free tier available |
+| Alternative Cloud | Render, Koyeb | Free tier available |
+| Monitoring | Grafana Cloud | 10K series free |
+
+## Development Workflow
+
+### Phase-Specific Development
+
+Each phase has defined boundaries:
+- Work on ONE phase at a time
+- Complete all features within current phase before advancing
+- Phase transitions require explicit approval
+- Each phase MUST have its own spec, plan, and tasks
+
+### Code Review Requirements
+
+All code changes MUST:
+- Reference an approved Task ID
+- Include passing tests
+- Follow the phase's technology constraints
+- Adhere to Clean Architecture boundaries
+
+### Quality Gates
+
+Before merging:
+- [ ] All tests pass
+- [ ] Linting passes (ruff/black for Python, ESLint for TypeScript)
+- [ ] Type checking passes (mypy for Python, TypeScript for frontend)
+- [ ] No security vulnerabilities introduced
+- [ ] Documentation updated if public interfaces change
+- [ ] Authentication must be managed via the phase-designated auth provider with JWT tokens.
+- [ ] Sensitive data must be stored in environment variables or managed via Dapr Secrets
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices for the Evolution of Todo project.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Amendment Process**:
+1. Propose change with rationale in an ADR (Architecture Decision Record)
+2. Review impact on existing code and practices
+3. Obtain stakeholder approval
+4. Update constitution with version increment
+5. Communicate changes to all contributors
+
+**Versioning Policy**:
+- MAJOR: Principle removal or redefinition
+- MINOR: New principle or section added
+- PATCH: Clarifications and wording refinements
+
+**Compliance**:
+- All PRs MUST verify constitution compliance
+- Complexity beyond current phase MUST be justified
+- Use `AGENTS.md` for agent-specific development guidance
+- Be token-sensitive in all agent interactions
+
+**Version**: 2.0.1 | **Ratified**: 2026-01-17 | **Last Amended**: 2026-01-17

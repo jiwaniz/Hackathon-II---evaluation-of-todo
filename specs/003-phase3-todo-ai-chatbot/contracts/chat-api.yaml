@@ -1,0 +1,184 @@
+openapi: "3.1.0"
+info:
+  title: Todo AI Chatbot API
+  version: "1.0.0"
+  description: Chat endpoint for AI-powered task management
+
+paths:
+  /api/{user_id}/chat:
+    post:
+      summary: Send chat message and get AI response
+      operationId: sendChatMessage
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Authenticated user ID (must match JWT sub claim)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: AI response with tool call details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "401":
+          description: Invalid or missing authentication token
+        "403":
+          description: URL user_id does not match JWT sub claim
+
+  /api/{user_id}/conversations:
+    get:
+      summary: List user's conversations
+      operationId: listConversations
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationListResponse"
+
+  /api/{user_id}/conversations/{conversation_id}/messages:
+    get:
+      summary: Get messages for a conversation
+      operationId: getConversationMessages
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageListResponse"
+
+components:
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        conversation_id:
+          type: integer
+          description: Existing conversation ID (creates new if omitted)
+        message:
+          type: string
+          description: User's natural language message
+          minLength: 1
+          maxLength: 5000
+
+    ChatResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            conversation_id:
+              type: integer
+            response:
+              type: string
+              description: AI assistant's response
+            tool_calls:
+              type: array
+              items:
+                $ref: "#/components/schemas/ToolCall"
+
+    ToolCall:
+      type: object
+      properties:
+        tool:
+          type: string
+          enum: [add_task, list_tasks, complete_task, delete_task, update_task]
+        input:
+          type: object
+        output:
+          type: object
+
+    ConversationListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            conversations:
+              type: array
+              items:
+                $ref: "#/components/schemas/Conversation"
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        message_count:
+          type: integer
+
+    MessageListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            messages:
+              type: array
+              items:
+                $ref: "#/components/schemas/Message"
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        tool_calls:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolCall"
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth JWT token
+
+security:
+  - bearerAuth: []
