@@ -4,9 +4,6 @@ const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
 
-  // Standalone output for Docker deployments
-  output: "standalone",
-
   // Disable ESLint during build (run separately in CI)
   eslint: {
     ignoreDuringBuilds: true,
@@ -16,6 +13,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Disable SWC minification to reduce memory usage
+  swcMinify: false,
 };
 
 export default nextConfig;
