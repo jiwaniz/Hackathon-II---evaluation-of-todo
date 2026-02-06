@@ -4,6 +4,16 @@ FROM node:20-slim AS frontend-builder
 
 WORKDIR /frontend
 
+# Accept build arguments for Next.js public env vars
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+# Set them as environment variables for the build
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 # Copy frontend package files
 COPY frontend/package*.json ./
 RUN npm install --prefer-offline --no-audit
@@ -19,10 +29,13 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and Node.js
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv package manager
@@ -35,17 +48,13 @@ WORKDIR /app/backend
 # Install Python dependencies using uv
 RUN uv pip install --system -r pyproject.toml
 
-# Copy built frontend from previous stage
-COPY --from=frontend-builder /frontend/.next /app/frontend/.next
+# Copy built frontend from previous stage (standalone build)
+COPY --from=frontend-builder /frontend/.next/standalone /app/frontend
+COPY --from=frontend-builder /frontend/.next/static /app/frontend/.next/static
 COPY --from=frontend-builder /frontend/public /app/frontend/public
-COPY --from=frontend-builder /frontend/package.json /app/frontend/
-COPY --from=frontend-builder /frontend/node_modules /app/frontend/node_modules
 
 # Expose ports
 EXPOSE 7860
-
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Create startup script that runs both services
 RUN echo '#!/bin/bash\n\
@@ -63,7 +72,7 @@ sleep 5\n\
 # Start frontend\n\
 echo "Starting Next.js frontend..."\n\
 cd /app/frontend\n\
-PORT=7860 npm run start &\n\
+PORT=7860 node server.js &\n\
 FRONTEND_PID=$!\n\
 \n\
 # Wait for both processes\n\
