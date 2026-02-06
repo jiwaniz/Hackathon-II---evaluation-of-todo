@@ -1,5 +1,3 @@
-const path = require('path');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable React strict mode for better development experience
@@ -15,32 +13,10 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Disable SWC minification to reduce memory usage
-  swcMinify: false,
-
-  // Optimize build for low memory environments
-  experimental: {
-    workerThreads: false,
-    cpus: 1,
-  },
-
-  // Webpack configuration
-  webpack: (config, { isServer }) => {
-    // Path aliases
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': path.resolve(__dirname),
-    };
-
-    // Reduce memory usage
-    config.optimization = {
-      ...config.optimization,
-      minimize: false, // Disable minification to save memory
-    };
-
-    // Limit parallel processing to reduce memory
-    config.parallelism = 1;
-
+  // Use webpack explicitly (more stable than Turbopack for production)
+  webpack: (config) => {
+    // Disable minification to save memory
+    config.optimization.minimize = false;
     return config;
   },
 };
