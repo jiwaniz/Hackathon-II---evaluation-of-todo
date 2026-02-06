@@ -1,110 +1,124 @@
-# Todo CLI - Phase I
+---
+title: Todo AI Chatbot
+emoji: ✅
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+app_port: 7860
+---
 
-In-Memory Python Console Todo Application
+# Todo AI Chatbot - Phase 3
 
-## Description
-
-A command-line todo application that stores tasks in memory using Python 3.13+ and UV package manager.
+Full-stack todo application with AI-powered chatbot assistant built with Next.js, FastAPI, and Supabase.
 
 ## Features
 
-- Add tasks with title and description
-- List all tasks with status indicators
-- Update task details
-- Delete tasks by ID
-- Mark tasks as complete/incomplete
+- **Task Management**: Create, update, delete, and organize tasks with priorities and tags
+- **AI Chatbot**: Natural language task management using Google Gemini and Groq
+- **Authentication**: Secure user authentication with Supabase (mandatory email verification)
+- **Smart Filtering**: Filter by priority, status, tags, and search
+- **Responsive UI**: Modern, mobile-friendly interface with Tailwind CSS
 
-## Setup
+## Tech Stack
+
+### Frontend
+- Next.js 16+ (App Router)
+- TypeScript
+- Tailwind CSS
+- Supabase Auth
+
+### Backend
+- Python 3.13+ with FastAPI
+- SQLModel ORM
+- Neon PostgreSQL
+- Google Gemini API
+- Groq API
+
+### Deployment
+- Hugging Face Spaces (Docker)
+- Serverless PostgreSQL (Neon)
+
+## Environment Variables
+
+Required secrets (configure in Space settings):
+
+```bash
+# Database
+DATABASE_URL=postgresql://...
+
+# Authentication
+BETTER_AUTH_SECRET=your-secret
+BETTER_AUTH_URL=https://your-space.hf.space
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_JWT_SECRET=your-jwt-secret
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# AI Providers
+GOOGLE_API_KEY=your-google-key
+GROQ_API_KEY=your-groq-key
+
+# CORS & API
+CORS_ORIGINS=https://your-space.hf.space
+NEXT_PUBLIC_API_URL=https://your-space.hf.space
+
+# Environment
+ENVIRONMENT=production
+```
+
+## Local Development
 
 ### Prerequisites
-
 - Python 3.13+
+- Node.js 20+
 - UV package manager
+- PostgreSQL (or Neon account)
 
-### Installation
+### Setup
+
+1. Clone the repository
+2. Install dependencies:
 
 ```bash
-# Create virtual environment
-uv venv
+# Backend
+cd backend
+uv sync
 
-# Activate virtual environment
-source .venv/bin/activate  # Linux/macOS
-# or
-.venv\Scripts\activate     # Windows
-
-# Install dependencies
-uv pip install -e ".[dev]"
+# Frontend
+cd frontend
+npm install
 ```
 
-## Usage
+3. Configure environment variables (copy from templates)
+
+4. Run development servers:
 
 ```bash
-# Add a task
-python -m src.main add --title "Buy groceries" --description "Milk, eggs, bread"
+# Backend (port 8000)
+cd backend
+uv run uvicorn main:app --reload
 
-# List all tasks
-python -m src.main list
-
-# Update a task
-python -m src.main update 1 --title "Buy organic groceries"
-
-# Mark task complete
-python -m src.main complete 1
-
-# Mark task incomplete
-python -m src.main incomplete 1
-
-# Delete a task
-python -m src.main delete 1
-
-# Get help
-python -m src.main --help
-```
-
-## Development
-
-```bash
-# Run tests
-uv run pytest
-
-# Run tests with coverage
-uv run pytest --cov=src --cov-report=term-missing
-
-# Format code
-uv run black src tests
-
-# Lint code
-uv run ruff check src tests
-
-# Type checking
-uv run mypy src
+# Frontend (port 3000)
+cd frontend
+npm run dev
 ```
 
 ## Project Structure
 
 ```
 /
-├── src/
-│   ├── __init__.py
-│   ├── main.py              # CLI entry point
-│   ├── models/
-│   │   ├── __init__.py
-│   │   └── task.py          # Task entity
-│   └── services/
-│       ├── __init__.py
-│       └── task_service.py  # CRUD logic
-├── tests/
-│   ├── __init__.py
-│   ├── conftest.py
-│   ├── unit/
-│   │   ├── test_task_model.py
-│   │   └── test_task_service.py
-│   └── integration/
-│       └── test_cli.py
-├── pyproject.toml
-└── README.md
+├── frontend/          # Next.js application
+├── backend/           # FastAPI server
+├── specs/             # Feature specifications
+├── Dockerfile         # Multi-stage build
+└── README.md          # This file
 ```
 
-## Note
+## License
 
-This is Phase I - In-memory storage only. All tasks are lost when the application exits.
+MIT
+
+## Author
+
+Built for PGD Data Sciences with AI - Agentic AI Hackathon
