@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 
 # Copy frontend package files
 COPY frontend/package*.json ./
-RUN npm install --prefer-offline --no-audit
+RUN npm install --include=dev --prefer-offline --no-audit
 
 # Copy frontend source
 COPY frontend/ ./
