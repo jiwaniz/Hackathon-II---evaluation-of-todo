@@ -1,12 +1,12 @@
 # Multi-stage Dockerfile for Todo App with AI Chatbot
 # Stage 1: Build Frontend
-FROM node:20-alpine AS frontend-builder
+FROM node:20-slim AS frontend-builder
 
 WORKDIR /frontend
 
 # Copy frontend package files
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm install --prefer-offline --no-audit
 
 # Copy frontend source
 COPY frontend/ ./
