@@ -21,8 +21,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable} data-scroll-behavior="smooth">
-      <body className="min-h-screen bg-gray-50 font-sans antialiased">
+    <html
+      lang="en"
+      className={inter.variable}
+      suppressHydrationWarning
+      data-new-gr-c-s-check-loaded=""
+      data-gr-ext-installed=""
+    >
+      <body
+        className="min-h-screen bg-gray-50 font-sans antialiased"
+        suppressHydrationWarning
+        data-new-gr-c-s-check-loaded=""
+        data-gr-ext-installed=""
+      >
         {/* Main content */}
         <main className="flex min-h-screen flex-col">
           {children}
