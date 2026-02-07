@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { signUp } from "../lib/supabase";
+import { signUp } from '../../lib/supabase";
 
 /**
  * Registration form component with email, password, and name fields.

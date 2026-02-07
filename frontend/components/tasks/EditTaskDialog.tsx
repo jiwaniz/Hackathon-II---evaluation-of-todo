@@ -14,9 +14,9 @@
  */
 
 import { useEffect, useCallback, useState } from "react";
-import type { Task, TaskUpdate, Priority } from "../types";
-import { PrioritySelect } from "../components/ui/PrioritySelect";
-import { TagInput } from "../components/ui/TagInput";
+import type { Task, TaskUpdate, Priority } from '../../types";
+import { PrioritySelect } from '../../components/ui/PrioritySelect";
+import { TagInput } from '../../components/ui/TagInput";
 
 interface EditTaskDialogProps {
   isOpen: boolean;

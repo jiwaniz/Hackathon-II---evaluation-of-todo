@@ -14,9 +14,9 @@
  * Reference: specs/ui/components.md
  */
 
-import type { Task } from "../types";
-import { PriorityBadge } from "../components/ui/PriorityBadge";
-import { TagBadge } from "../components/ui/TagBadge";
+import type { Task } from '../../types";
+import { PriorityBadge } from '../../components/ui/PriorityBadge";
+import { TagBadge } from '../../components/ui/TagBadge";
 
 interface TaskCardProps {
   task: Task;

@@ -14,7 +14,7 @@
 
 import { useEffect, useCallback } from "react";
 import { TaskForm } from "./TaskForm";
-import type { TaskCreate } from "../types";
+import type { TaskCreate } from '../../types";
 
 interface CreateTaskDialogProps {
   isOpen: boolean;

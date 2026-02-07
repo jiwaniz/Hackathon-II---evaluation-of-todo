@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { RegisterForm } from "../../components/auth/RegisterForm";
+import { RegisterForm } from "../../../components/auth/RegisterForm";
 
 export const metadata = {
   title: "Register - Evolution of Todo",

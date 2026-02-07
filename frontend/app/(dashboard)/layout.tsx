@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 
-import { AuthGuard } from "../components/auth/AuthGuard";
-import { UserMenu } from "../components/auth/UserMenu";
+import { AuthGuard } from '../../components/auth/AuthGuard";
+import { UserMenu } from '../../components/auth/UserMenu";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

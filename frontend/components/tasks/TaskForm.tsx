@@ -14,9 +14,9 @@
  */
 
 import { useState } from "react";
-import type { TaskCreate, Priority } from "../types";
-import { PrioritySelect } from "../components/ui/PrioritySelect";
-import { TagInput } from "../components/ui/TagInput";
+import type { TaskCreate, Priority } from '../../types";
+import { PrioritySelect } from '../../components/ui/PrioritySelect";
+import { TagInput } from '../../components/ui/TagInput";
 
 interface TaskFormProps {
   initialData?: TaskCreate;

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 
-import { handleSignOut, useCurrentUser } from "../lib/auth-client";
+import { handleSignOut, useCurrentUser } from '../../lib/auth-client";
 
 /**
  * User menu dropdown component showing user info and logout button.
