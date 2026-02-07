@@ -1,7 +1,7 @@
 "use client";
 
-import { useChat } from "@/hooks/useChat";
-import ChatWindow from "@/components/chat/ChatWindow";
+import { useChat } from "../../hooks/useChat";
+import ChatWindow from "../../components/chat/ChatWindow";
 
 export default function ChatPage() {
   // TODO: Replace with actual user ID from Supabase auth session

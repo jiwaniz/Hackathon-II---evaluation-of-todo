@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { signInWithEmail } from "@/lib/auth-client";
+import { signInWithEmail } from "../lib/auth-client";
 
 /**
  * Login form component with email and password fields.

@@ -16,8 +16,8 @@
  */
 
 import { useState, useCallback } from "react";
-import type { Task } from "@/types";
-import { api } from "@/lib/api";
+import type { Task } from "./types";
+import { api } from "lib/api";
 
 interface UseOptimisticTasksProps {
   userId: string;

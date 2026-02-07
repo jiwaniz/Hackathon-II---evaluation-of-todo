@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { useCurrentUser } from "@/lib/auth-client";
+import { useCurrentUser } from "../lib/auth-client";
 
 interface AuthGuardProps {
   children: React.ReactNode;

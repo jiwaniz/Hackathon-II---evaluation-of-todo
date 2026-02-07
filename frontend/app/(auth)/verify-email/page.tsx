@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { resendVerificationEmail } from "@/lib/supabase";
+import { resendVerificationEmail } from "../../lib/supabase";
 
 /**
  * Verify Email page shown after registration.

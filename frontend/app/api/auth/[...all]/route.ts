@@ -8,7 +8,7 @@
  * - POST /api/auth/sign-out (logout)
  */
 
-import { auth } from "@/lib/auth";
+import { auth } from "../../../lib/auth";
 import { toNextJsHandler } from "better-auth/next-js";
 
 // Export handlers for all HTTP methods

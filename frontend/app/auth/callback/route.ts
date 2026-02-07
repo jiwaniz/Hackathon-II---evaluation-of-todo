@@ -5,7 +5,7 @@
  * When users click the verification link in their email, they're redirected here.
  */
 
-import { createClient } from "@/lib/supabase";
+import { createClient } from "../../lib/supabase";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 

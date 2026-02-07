@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { ChatMessage, ChatResponse } from "@/types/chat";
-import { api } from "@/lib/api";
+import type { ChatMessage, ChatResponse } from "./types/chat";
+import { api } from "lib/api";
 
 interface UseChatOptions {
   userId: string;
