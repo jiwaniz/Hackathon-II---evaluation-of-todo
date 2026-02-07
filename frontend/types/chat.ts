@@ -8,7 +8,7 @@ export interface ChatRequest {
 }
 
 export interface ToolCall {
-  tool: "add_task" | "list_tasks" | "complete_task" | "delete_task" | "update_task";
+  tool: string;
   input: Record<string, unknown>;
   output: Record<string, unknown>;
 }
