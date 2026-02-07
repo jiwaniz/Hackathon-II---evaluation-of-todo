@@ -1,3 +1,23 @@
+---
+title: Todo AI Chatbot
+emoji: ✅
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+app_port: 7860
+---
+
+# Todo AI Chatbot - Phase III
+
+Full-Stack Todo Application with AI Assistant
+
+## Live Demo
+
+Deployed on Hugging Face Spaces: [View App](https://huggingface.co/spaces/jiwaniz/to-do-evalution)
+
+---
+
 # Todo CLI - Phase I
 
 In-Memory Python Console Todo Application
