@@ -5,15 +5,8 @@ const nextConfig = {
   // Enable React strict mode
   reactStrictMode: true,
 
-  // Disable ESLint during build (run separately)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
-  // Disable TypeScript checks during build (run separately)
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // Empty turbopack config to silence warning while using webpack
+  turbopack: {},
 
   // Configure webpack to handle @ alias
   webpack: (config) => {

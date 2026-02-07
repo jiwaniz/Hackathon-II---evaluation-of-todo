@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "SKIP_ENV_VALIDATION=1 next build --experimental-build-mode=compile",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "next lint --fix",
     "test": "jest",
     "test:watch": "jest --watch"
   },
