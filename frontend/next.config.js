@@ -1,23 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable React strict mode for better development experience
+  // Enable React strict mode
   reactStrictMode: true,
 
-  // Disable ESLint during build (run separately in CI)
+  // Disable ESLint during build (run separately)
   eslint: {
     ignoreDuringBuilds: true,
   },
 
-  // Disable TypeScript checks during build (run separately in CI)
+  // Disable TypeScript checks during build (run separately)
   typescript: {
     ignoreBuildErrors: true,
-  },
-
-  // Use webpack explicitly (more stable than Turbopack for production)
-  webpack: (config) => {
-    // Disable minification to save memory
-    config.optimization.minimize = false;
-    return config;
   },
 };
 
