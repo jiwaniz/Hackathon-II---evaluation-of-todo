@@ -13,14 +13,14 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { useCurrentUser } from "../../lib/auth-client";
-import { api } from "../../lib/api";
-import { CreateTaskDialog } from "../../components/tasks/CreateTaskDialog";
-import { EditTaskDialog } from "../../components/tasks/EditTaskDialog";
-import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
-import { TaskList } from "../../components/tasks/TaskList";
-import { FilterBar, type FilterState } from "../../components/filters/FilterBar";
-import type { Task, TaskCreate, TaskUpdate, Priority } from "../../types";
+import { useCurrentUser } from "../../../lib/auth-client";
+import { api } from "../../../lib/api";
+import { CreateTaskDialog } from "../../../components/tasks/CreateTaskDialog";
+import { EditTaskDialog } from "../../../components/tasks/EditTaskDialog";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
+import { TaskList } from "../../../components/tasks/TaskList";
+import { FilterBar, type FilterState } from "../../../components/filters/FilterBar";
+import type { Task, TaskCreate, TaskUpdate, Priority } from "../../../types";
 
 export default function TasksPage() {
   const { user, isLoading: isUserLoading } = useCurrentUser();
