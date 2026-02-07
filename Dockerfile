@@ -24,6 +24,9 @@ RUN npm install --include=dev --prefer-offline --no-audit
 # Copy frontend source
 COPY frontend/ ./
 
+# Debug: List lib directory to verify files are copied
+RUN ls -la lib/ && echo "=== lib files verified ==="
+
 # Build Next.js app
 RUN npm run build
 
