@@ -14,7 +14,7 @@
  * Reference: specs/ui/components.md, specs/features/task-crud.md
  */
 
-import type { Priority } from '../../types";
+import type { Priority } from "../../types";
 import { SearchInput } from "./SearchInput";
 import { StatusFilter } from "./StatusFilter";
 import { PriorityFilter } from "./PriorityFilter";

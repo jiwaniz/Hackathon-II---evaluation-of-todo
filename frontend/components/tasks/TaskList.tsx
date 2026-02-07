@@ -14,9 +14,9 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { Task } from '../../types";
+import type { Task } from "../../types";
 import { TaskCard } from "./TaskCard";
-import { EmptyState } from '../../components/ui/EmptyState";
+import { EmptyState } from "../../components/ui/EmptyState";
 
 interface TaskListProps {
   tasks: Task[];

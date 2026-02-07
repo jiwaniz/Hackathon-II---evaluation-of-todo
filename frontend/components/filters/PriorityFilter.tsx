@@ -11,7 +11,7 @@
  * Reference: specs/ui/components.md, specs/features/task-crud.md
  */
 
-import type { Priority } from '../../types";
+import type { Priority } from "../../types";
 
 interface PriorityFilterProps {
   value: Priority | "all";

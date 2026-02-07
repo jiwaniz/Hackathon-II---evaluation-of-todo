@@ -5,7 +5,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
-import { PriorityBadge } from '../../components/ui/PriorityBadge";
+import { PriorityBadge } from "../../components/ui/PriorityBadge";
 
 describe("PriorityBadge", () => {
   it("renders high priority with correct styling", () => {

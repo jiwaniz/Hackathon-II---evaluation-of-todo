@@ -11,7 +11,7 @@
  * Reference: specs/ui/components.md, frontend/CLAUDE.md
  */
 
-import type { Priority } from '../../types";
+import type { Priority } from "../../types";
 
 interface PrioritySelectProps {
   value: Priority;
