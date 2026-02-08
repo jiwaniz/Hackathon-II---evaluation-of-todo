@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { signInWithEmail } from "@/lib/auth-client";
+import { signInWithPassword } from "@/lib/supabase";
 
 /**
  * Login form component with email and password fields.
@@ -25,10 +25,15 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const result = await signInWithEmail(email, password);
+      const result = await signInWithPassword(email, password);
 
       if (result.error) {
-        setError(result.error.message || "Invalid email or password");
+        // Check if error is due to unverified email
+        if (result.error.message?.includes("Email not confirmed")) {
+          setError("Please verify your email before logging in. Check your inbox for the verification link.");
+        } else {
+          setError(result.error.message || "Invalid email or password");
+        }
         return;
       }
 

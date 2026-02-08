@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { registerWithEmail } from "@/lib/auth-client";
+import { signUp } from "@/lib/supabase";
 
 /**
  * Registration form component with email, password, and name fields.
@@ -40,15 +40,15 @@ export function RegisterForm() {
     setIsLoading(true);
 
     try {
-      const result = await registerWithEmail(email, password, name || undefined);
+      const result = await signUp(email, password, name || undefined);
 
       if (result.error) {
         setError(result.error.message || "Registration failed. Please try again.");
         return;
       }
 
-      // Redirect to verify-email page (email verification required)
-      router.push("/verify-email");
+      // Redirect to verify-email page (email verification required by Supabase)
+      router.push("/verify-email?email=" + encodeURIComponent(email));
     } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {
