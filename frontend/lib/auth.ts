@@ -115,8 +115,8 @@ export const auth = betterAuth({
     enabled: true,
     // Password requirements
     minPasswordLength: 8,
-    // Allow login without email verification (optional verification)
-    requireEmailVerification: false,
+    // Require email verification - prevents fake/invalid emails
+    requireEmailVerification: true,
   },
 
   // Email verification configuration

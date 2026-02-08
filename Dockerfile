@@ -93,6 +93,8 @@ ENV PYTHONUNBUFFERED=1
 ENV NODE_ENV=production
 ENV PORT=7860
 ENV BETTER_AUTH_URL=https://jiwaniz-to-do-evalution.hf.space
+# RESEND_API_KEY should be set via HF Spaces secrets for email verification
+ENV RESEND_API_KEY=${RESEND_API_KEY}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
