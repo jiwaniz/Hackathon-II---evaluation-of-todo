@@ -5,14 +5,16 @@ FROM node:20-slim AS frontend-builder
 WORKDIR /frontend
 
 # Accept build arguments for Next.js public env vars (with defaults for build)
-ARG NEXT_PUBLIC_API_URL=http://localhost:7860
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
+ARG BETTER_AUTH_URL=https://jiwaniz-to-do-evalution.hf.space
 
 # Set them as environment variables for the build
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV BETTER_AUTH_URL=$BETTER_AUTH_URL
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -90,6 +92,7 @@ wait $BACKEND_PID $FRONTEND_PID\n\
 ENV PYTHONUNBUFFERED=1
 ENV NODE_ENV=production
 ENV PORT=7860
+ENV BETTER_AUTH_URL=https://jiwaniz-to-do-evalution.hf.space
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
