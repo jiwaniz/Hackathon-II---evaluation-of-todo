@@ -6,15 +6,13 @@ WORKDIR /frontend
 
 # Accept build arguments for Next.js public env vars (with defaults for build)
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
-ARG BETTER_AUTH_URL=https://jiwaniz-to-do-evalution.hf.space
+ARG NEXT_PUBLIC_SUPABASE_URL=https://nqqrfchwdhjmskwmzfyc.supabase.co
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xcXJmY2h3ZGhqbXNrd216ZnljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDMwMjUsImV4cCI6MjA4NTY3OTAyNX0.Vfo-rLG0I6kc3y1FvJFQarfoqmIcO7nsQYGu01HJj5o
 
 # Set them as environment variables for the build
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV BETTER_AUTH_URL=$BETTER_AUTH_URL
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -92,9 +90,9 @@ wait $BACKEND_PID $FRONTEND_PID\n\
 ENV PYTHONUNBUFFERED=1
 ENV NODE_ENV=production
 ENV PORT=7860
-ENV BETTER_AUTH_URL=https://jiwaniz-to-do-evalution.hf.space
-# RESEND_API_KEY should be set via HF Spaces secrets for email verification
-ENV RESEND_API_KEY=${RESEND_API_KEY}
+# Supabase handles email verification - no additional keys needed
+ENV NEXT_PUBLIC_SUPABASE_URL=https://nqqrfchwdhjmskwmzfyc.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xcXJmY2h3ZGhqbXNrd216ZnljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDMwMjUsImV4cCI6MjA4NTY3OTAyNX0.Vfo-rLG0I6kc3y1FvJFQarfoqmIcO7nsQYGu01HJj5o
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
