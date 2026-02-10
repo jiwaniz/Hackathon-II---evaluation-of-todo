@@ -13,10 +13,18 @@ import { LoginForm } from "@/components/auth/LoginForm";
 function LoginContent() {
   const searchParams = useSearchParams();
   const isSessionExpired = searchParams.get("expired") === "true";
+  const isVerified = searchParams.get("verified") === "true";
 
   return (
     <div className="w-full max-w-md space-y-8">
-      {/* Session expired message (T140) */}
+      {/* Email verified success message */}
+      {isVerified && (
+        <div className="p-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md">
+          ✅ Email verified successfully! You can now sign in.
+        </div>
+      )}
+
+      {/* Session expired message */}
       {isSessionExpired && (
         <div className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md">
           Your session has expired. Please sign in again.
