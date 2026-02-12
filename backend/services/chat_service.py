@@ -1,4 +1,4 @@
-"""Chat orchestration service - connects ADK agent with MCP tools and conversation persistence.
+"""Chat orchestration service - connects AI agent with MCP tools and conversation persistence.
 
 Stateless request cycle:
 1. Receive user message
@@ -8,13 +8,13 @@ Stateless request cycle:
 5. Run agent with MCP tools
 6. Store assistant response in database
 7. Return response to client
+
+LLM priority: Gemini 2.0 Flash → Gemini 2.0 Flash-Lite → Groq (with tool calling)
 """
 
 import json
 import logging
 
-from google import genai
-from google.genai import types
 from sqlmodel import Session
 
 from config import settings
@@ -51,9 +51,246 @@ Guidelines:
 """
 
 
-def _build_tool_declarations() -> list[types.FunctionDeclaration]:
-    """Build Gemini function declarations for MCP tools."""
+def _build_groq_tools() -> list[dict]:
+    """Build OpenAI-compatible tool definitions for Groq."""
     return [
+        {
+            "type": "function",
+            "function": {
+                "name": "add_task",
+                "description": "Create a new task for the user",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string", "description": "Task title (required)"},
+                        "description": {"type": "string", "description": "Task description (optional)"},
+                    },
+                    "required": ["title"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_tasks",
+                "description": "Retrieve tasks with optional status filter",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string",
+                            "description": "Filter: 'all', 'pending', or 'completed'",
+                            "enum": ["all", "pending", "completed"],
+                        },
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "complete_task",
+                "description": "Mark a task as complete",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "integer", "description": "The task ID to complete"},
+                    },
+                    "required": ["task_id"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "delete_task",
+                "description": "Remove a task permanently",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "integer", "description": "The task ID to delete"},
+                    },
+                    "required": ["task_id"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "update_task",
+                "description": "Modify task title or description",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "integer", "description": "The task ID to update"},
+                        "title": {"type": "string", "description": "New title (optional)"},
+                        "description": {"type": "string", "description": "New description (optional)"},
+                    },
+                    "required": ["task_id"],
+                },
+            },
+        },
+    ]
+
+
+def _execute_tool(tool_name: str, args: dict, user_id: str) -> str:
+    """Execute an MCP tool by name with the given arguments."""
+    from mcp_server.tools import add_task, complete_task, delete_task, list_tasks, update_task
+
+    tool_map = {
+        "add_task": lambda a: add_task(user_id=user_id, **a),
+        "list_tasks": lambda a: list_tasks(user_id=user_id, **a),
+        "complete_task": lambda a: complete_task(user_id=user_id, **a),
+        "delete_task": lambda a: delete_task(user_id=user_id, **a),
+        "update_task": lambda a: update_task(user_id=user_id, **a),
+    }
+
+    handler = tool_map.get(tool_name)
+    if not handler:
+        return json.dumps({"error": f"Unknown tool: {tool_name}"})
+
+    return handler(args)
+
+
+def _get_groq_response(messages: list[dict], user_id: str) -> tuple[str, list[dict]]:
+    """Groq fallback with full tool calling support."""
+    from groq import Groq
+
+    client = Groq(api_key=settings.groq_api_key)
+
+    groq_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for msg in messages:
+        groq_messages.append({"role": msg["role"], "content": msg["content"]})
+
+    tools = _build_groq_tools()
+    tool_calls_log = []
+    max_turns = 5
+
+    for _ in range(max_turns):
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=groq_messages,
+            tools=tools,
+            tool_choice="auto",
+            max_tokens=1024,
+        )
+
+        choice = response.choices[0]
+
+        # If the model wants to call tools
+        if choice.message.tool_calls:
+            # Add assistant message with tool calls
+            groq_messages.append(choice.message)
+
+            for tc in choice.message.tool_calls:
+                tool_name = tc.function.name
+                tool_args = json.loads(tc.function.arguments) if tc.function.arguments else {}
+
+                logger.info(f"[Groq] Agent calling tool: {tool_name} with args: {tool_args}")
+
+                result = _execute_tool(tool_name, tool_args, user_id)
+
+                tool_calls_log.append({
+                    "tool": tool_name,
+                    "input": tool_args,
+                    "output": json.loads(result),
+                })
+
+                # Add tool result as a message
+                groq_messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": result,
+                })
+        else:
+            # Model returned a text response
+            return choice.message.content or "Done!", tool_calls_log
+
+    return "I've completed the operations. Is there anything else?", tool_calls_log
+
+
+async def process_chat_message(
+    session: Session,
+    user_id: str,
+    message: str,
+    conversation_id: int | None = None,
+) -> dict:
+    """Process a chat message through the AI agent.
+
+    LLM priority: Gemini 2.0 Flash → Gemini 2.0 Flash-Lite → Groq with tools.
+    """
+    # Get or create conversation
+    if conversation_id:
+        conversation = get_conversation(session, conversation_id, user_id)
+        if not conversation:
+            conversation = create_conversation(session, user_id)
+    else:
+        conversation = create_conversation(session, user_id)
+
+    # Store user message
+    add_message(session, conversation.id, user_id, MessageRole.USER, message)
+
+    # Fetch conversation history
+    history = get_messages(session, conversation.id, user_id)
+    history_for_agent = [
+        {"role": msg.role.value, "content": msg.content}
+        for msg in history
+    ]
+
+    # Try Gemini models first, fall back to Groq
+    tool_calls_log = []
+    response_text = None
+
+    # Attempt 1: Gemini 2.0 Flash
+    if settings.google_api_key:
+        for model_name in ["gemini-2.0-flash", "gemini-2.0-flash-lite"]:
+            try:
+                response_text, tool_calls_log = await _run_gemini_agent(
+                    history_for_agent, user_id, model_name
+                )
+                break
+            except Exception as e:
+                logger.warning(f"{model_name} failed: {e}")
+                continue
+
+    # Attempt 2: Groq with tool calling
+    if response_text is None and settings.groq_api_key:
+        try:
+            response_text, tool_calls_log = _get_groq_response(history_for_agent, user_id)
+        except Exception as groq_err:
+            logger.error(f"Groq also failed: {groq_err}")
+
+    if response_text is None:
+        response_text = "I'm sorry, I'm having trouble right now. Please try again in a moment."
+
+    # Store assistant response
+    tool_calls_json = json.dumps(tool_calls_log) if tool_calls_log else None
+    add_message(
+        session,
+        conversation.id,
+        user_id,
+        MessageRole.ASSISTANT,
+        response_text,
+        tool_calls=tool_calls_json,
+    )
+
+    return {
+        "conversation_id": conversation.id,
+        "response": response_text,
+        "tool_calls": tool_calls_log,
+    }
+
+
+async def _run_gemini_agent(
+    messages: list[dict], user_id: str, model_name: str = "gemini-2.0-flash"
+) -> tuple[str, list[dict]]:
+    """Run the Gemini agent with function calling for MCP tools."""
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=settings.google_api_key)
+
+    tool_declarations = [
         types.FunctionDeclaration(
             name="add_task",
             description="Create a new task for the user",
@@ -117,126 +354,7 @@ def _build_tool_declarations() -> list[types.FunctionDeclaration]:
         ),
     ]
 
-
-def _execute_tool(tool_name: str, args: dict, user_id: str) -> str:
-    """Execute an MCP tool by name with the given arguments."""
-    from mcp_server.tools import add_task, complete_task, delete_task, list_tasks, update_task
-
-    tool_map = {
-        "add_task": lambda a: add_task(user_id=user_id, **a),
-        "list_tasks": lambda a: list_tasks(user_id=user_id, **a),
-        "complete_task": lambda a: complete_task(user_id=user_id, **a),
-        "delete_task": lambda a: delete_task(user_id=user_id, **a),
-        "update_task": lambda a: update_task(user_id=user_id, **a),
-    }
-
-    handler = tool_map.get(tool_name)
-    if not handler:
-        return json.dumps({"error": f"Unknown tool: {tool_name}"})
-
-    return handler(args)
-
-
-def _get_gemini_client() -> genai.Client:
-    """Create a Gemini client."""
-    return genai.Client(api_key=settings.google_api_key)
-
-
-def _get_groq_response(messages: list[dict], user_id: str) -> tuple[str, list[dict]]:
-    """Fallback: use Groq for chat completion (without tool calling)."""
-    from groq import Groq
-
-    client = Groq(api_key=settings.groq_api_key)
-
-    groq_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    for msg in messages:
-        groq_messages.append({"role": msg["role"], "content": msg["content"]})
-
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=groq_messages,
-        max_tokens=1024,
-    )
-
-    return response.choices[0].message.content or "I'm sorry, I couldn't process that.", []
-
-
-async def process_chat_message(
-    session: Session,
-    user_id: str,
-    message: str,
-    conversation_id: int | None = None,
-) -> dict:
-    """Process a chat message through the AI agent.
-
-    Stateless cycle: fetch history → store user msg → run agent → store response → return.
-
-    Args:
-        session: Database session
-        user_id: Authenticated user ID
-        message: User's natural language message
-        conversation_id: Existing conversation ID (creates new if None)
-
-    Returns:
-        Dict with conversation_id, response text, and tool_calls
-    """
-    # Get or create conversation
-    if conversation_id:
-        conversation = get_conversation(session, conversation_id, user_id)
-        if not conversation:
-            conversation = create_conversation(session, user_id)
-    else:
-        conversation = create_conversation(session, user_id)
-
-    # Store user message
-    add_message(session, conversation.id, user_id, MessageRole.USER, message)
-
-    # Fetch conversation history
-    history = get_messages(session, conversation.id, user_id)
-    history_for_agent = [
-        {"role": msg.role.value, "content": msg.content}
-        for msg in history
-    ]
-
-    # Try Gemini first, fall back to Groq
-    tool_calls_log = []
-    try:
-        response_text, tool_calls_log = await _run_gemini_agent(history_for_agent, user_id)
-    except Exception as e:
-        logger.warning(f"Gemini failed, falling back to Groq: {e}")
-        try:
-            response_text, tool_calls_log = _get_groq_response(history_for_agent, user_id)
-        except Exception as groq_err:
-            logger.error(f"Both Gemini and Groq failed: {groq_err}")
-            response_text = "I'm sorry, I'm having trouble processing your request right now. Please try again in a moment."
-
-    # Store assistant response
-    tool_calls_json = json.dumps(tool_calls_log) if tool_calls_log else None
-    add_message(
-        session,
-        conversation.id,
-        user_id,
-        MessageRole.ASSISTANT,
-        response_text,
-        tool_calls=tool_calls_json,
-    )
-
-    return {
-        "conversation_id": conversation.id,
-        "response": response_text,
-        "tool_calls": tool_calls_log,
-    }
-
-
-async def _run_gemini_agent(messages: list[dict], user_id: str) -> tuple[str, list[dict]]:
-    """Run the Gemini agent with function calling for MCP tools.
-
-    Returns:
-        Tuple of (response_text, tool_calls_log)
-    """
-    client = _get_gemini_client()
-
-    tools = types.Tool(function_declarations=_build_tool_declarations())
+    tools = types.Tool(function_declarations=tool_declarations)
 
     # Build contents from history
     contents = []
@@ -245,11 +363,11 @@ async def _run_gemini_agent(messages: list[dict], user_id: str) -> tuple[str, li
         contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
 
     tool_calls_log = []
-    max_turns = 5  # Prevent infinite tool-calling loops
+    max_turns = 5
 
     for _ in range(max_turns):
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=model_name,
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
@@ -258,7 +376,6 @@ async def _run_gemini_agent(messages: list[dict], user_id: str) -> tuple[str, li
             ),
         )
 
-        # Check if model wants to call a function
         candidate = response.candidates[0]
         part = candidate.content.parts[0]
 
@@ -267,9 +384,8 @@ async def _run_gemini_agent(messages: list[dict], user_id: str) -> tuple[str, li
             tool_name = fc.name
             tool_args = dict(fc.args) if fc.args else {}
 
-            logger.info(f"Agent calling tool: {tool_name} with args: {tool_args}")
+            logger.info(f"[{model_name}] Agent calling tool: {tool_name} with args: {tool_args}")
 
-            # Execute the tool
             result = _execute_tool(tool_name, tool_args, user_id)
 
             tool_calls_log.append({
@@ -278,7 +394,6 @@ async def _run_gemini_agent(messages: list[dict], user_id: str) -> tuple[str, li
                 "output": json.loads(result),
             })
 
-            # Add function call and result to contents for next turn
             contents.append(candidate.content)
             contents.append(
                 types.Content(
@@ -290,8 +405,6 @@ async def _run_gemini_agent(messages: list[dict], user_id: str) -> tuple[str, li
                 )
             )
         else:
-            # Model returned text response
             return part.text or "Done!", tool_calls_log
 
-    # If we exhausted turns, return last response
-    return "I've completed the operations. Is there anything else you'd like me to do?", tool_calls_log
+    return "I've completed the operations. Is there anything else?", tool_calls_log
