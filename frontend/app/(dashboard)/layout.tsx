@@ -37,6 +37,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 My Tasks
               </Link>
+              <Link
+                href="/chat"
+                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600"
+              >
+                AI Chat
+              </Link>
             </nav>
 
             {/* User menu */}
