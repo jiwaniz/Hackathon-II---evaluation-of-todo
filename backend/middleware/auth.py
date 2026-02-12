@@ -33,21 +33,21 @@ def extract_token_from_header(authorization: Optional[str]) -> str:
     return authorization[7:]
 
 
-def verify_supabase_jwt(token: str) -> str:
-    """Verify a Supabase JWT token and return the user's sub claim.
+def verify_supabase_jwt(token: str) -> dict:
+    """Verify a Supabase JWT token and return the full payload.
 
     Args:
         token: The JWT token from Supabase Auth
 
     Returns:
-        The user ID (sub claim) from the token
+        The decoded payload dict (contains sub, email, user_metadata, etc.)
 
     Raises:
         HTTPException: If token is invalid or expired
     """
     if not settings.supabase_jwt_secret:
         raise HTTPException(
-            status_code=500,
+            status_code=401,
             detail={"code": "CONFIG_ERROR", "message": "Supabase JWT secret not configured"},
         )
 
@@ -58,13 +58,12 @@ def verify_supabase_jwt(token: str) -> str:
             algorithms=["HS256"],
             options={"verify_aud": False},
         )
-        user_id = payload.get("sub")
-        if not user_id:
+        if not payload.get("sub"):
             raise HTTPException(
                 status_code=401,
                 detail={"code": "INVALID_TOKEN", "message": "Token missing sub claim"},
             )
-        return user_id
+        return payload
     except JWTError:
         raise HTTPException(
             status_code=401,
@@ -96,15 +95,52 @@ def verify_session_token(token: str, db_session: Session) -> str:
     return user_id
 
 
-def _resolve_user_id(token: str, db_session: Session) -> str:
-    """Resolve user ID from token, trying Supabase JWT first, then Better Auth session."""
+def _resolve_user_id(token: str, db_session: Session) -> tuple[str, dict]:
+    """Resolve user ID from token, trying Supabase JWT first, then Better Auth session.
+
+    Returns:
+        Tuple of (user_id, jwt_payload). jwt_payload is empty dict for Better Auth sessions.
+    """
     if settings.supabase_jwt_secret:
         try:
-            return verify_supabase_jwt(token)
+            payload = verify_supabase_jwt(token)
+            return payload["sub"], payload
         except HTTPException:
             pass
 
-    return verify_session_token(token, db_session)
+    user_id = verify_session_token(token, db_session)
+    return user_id, {}
+
+
+def _get_or_provision_user(user_id: str, jwt_payload: dict, db_session: Session) -> User:
+    """Get user from DB or auto-provision from Supabase JWT payload on first login."""
+    user = db_session.get(User, user_id)
+    if user:
+        return user
+
+    # Auto-provision: create a local user record for this Supabase user
+    if not jwt_payload:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "USER_NOT_FOUND", "message": "User not found"},
+        )
+
+    email = jwt_payload.get("email", "")
+    name = (jwt_payload.get("user_metadata") or {}).get("name", "")
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    user = User(
+        id=user_id,
+        email=email,
+        name=name or None,
+        emailVerified=True,
+        createdAt=now,
+        updatedAt=now,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
 
 
 async def get_current_user(
@@ -113,16 +149,8 @@ async def get_current_user(
 ) -> User:
     """Dependency to get the current authenticated user."""
     token = extract_token_from_header(authorization)
-    user_id = _resolve_user_id(token, db_session)
-
-    user = db_session.get(User, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail={"code": "USER_NOT_FOUND", "message": "User not found"},
-        )
-
-    return user
+    user_id, jwt_payload = _resolve_user_id(token, db_session)
+    return _get_or_provision_user(user_id, jwt_payload, db_session)
 
 
 async def verify_user_access(
@@ -132,7 +160,7 @@ async def verify_user_access(
 ) -> User:
     """Dependency to verify token AND validate URL {user_id} matches."""
     token = extract_token_from_header(authorization)
-    session_user_id = _resolve_user_id(token, db_session)
+    session_user_id, jwt_payload = _resolve_user_id(token, db_session)
 
     url_user_id = request.path_params.get("user_id")
     if url_user_id and url_user_id != session_user_id:
@@ -141,11 +169,4 @@ async def verify_user_access(
             detail={"code": "FORBIDDEN", "message": "Access forbidden - user ID mismatch"},
         )
 
-    user = db_session.get(User, session_user_id)
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail={"code": "USER_NOT_FOUND", "message": "User not found"},
-        )
-
-    return user
+    return _get_or_provision_user(session_user_id, jwt_payload, db_session)
