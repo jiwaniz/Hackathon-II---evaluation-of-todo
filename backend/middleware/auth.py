@@ -54,23 +54,35 @@ def verify_supabase_jwt(token: str) -> dict:
             detail={"code": "CONFIG_ERROR", "message": "Supabase JWT secret not configured"},
         )
 
+    # Log the token header to identify the algorithm
+    try:
+        header = jwt.get_unverified_header(token)
+        logger.info(f"JWT header: alg={header.get('alg')}, typ={header.get('typ')}")
+    except Exception as e:
+        logger.error(f"Failed to read JWT header: {e}")
+
+    # Supabase may use HS256, HS384, or HS512
+    allowed_algorithms = ["HS256", "HS384", "HS512"]
+
     import base64
 
     # Try raw secret first, then base64-decoded
-    secrets_to_try = [settings.supabase_jwt_secret]
+    secrets_to_try = [
+        ("raw", settings.supabase_jwt_secret),
+    ]
     try:
         decoded_secret = base64.b64decode(settings.supabase_jwt_secret)
-        secrets_to_try.append(decoded_secret)
+        secrets_to_try.append(("base64-decoded", decoded_secret))
     except Exception:
         pass
 
     last_error = None
-    for i, secret in enumerate(secrets_to_try):
+    for label, secret in secrets_to_try:
         try:
             payload = jwt.decode(
                 token,
                 secret,
-                algorithms=["HS256"],
+                algorithms=allowed_algorithms,
                 options={"verify_aud": False},
             )
             if not payload.get("sub"):
@@ -78,12 +90,11 @@ def verify_supabase_jwt(token: str) -> dict:
                     status_code=401,
                     detail={"code": "INVALID_TOKEN", "message": "Token missing sub claim"},
                 )
-            if i == 1:
-                logger.info("JWT verified with base64-decoded secret")
+            logger.info(f"JWT verified successfully with {label} secret")
             return payload
         except JWTError as e:
             last_error = e
-            logger.warning(f"JWT verify attempt {i} failed: {type(e).__name__}: {e}")
+            logger.warning(f"JWT verify with {label} secret failed: {type(e).__name__}: {e}")
             continue
 
     logger.error(f"All JWT verification attempts failed. Last error: {last_error}")
