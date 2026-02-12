@@ -35,6 +35,8 @@ async def lifespan(app: FastAPI):
     """Application lifespan events for startup and shutdown."""
     # Startup: ensure all DB tables exist (safe to run on every start)
     logger.info(f"Starting Evolution of Todo API in {settings.environment} mode")
+    logger.info(f"SUPABASE_JWT_SECRET configured: {bool(settings.supabase_jwt_secret)}")
+    logger.info(f"SUPABASE_URL configured: {bool(settings.supabase_url)}")
     try:
         create_db_and_tables()
         logger.info("Database tables verified/created")
