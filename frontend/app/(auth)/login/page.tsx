@@ -1,16 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
 
 import { LoginForm } from "@/components/auth/LoginForm";
+import { useCurrentUser } from "@/lib/supabase";
 
 /**
  * Inner login content that uses search params.
  * Wrapped in Suspense for Next.js 16+ compatibility.
  */
 function LoginContent() {
+  const { isAuthenticated, isLoading } = useCurrentUser();
+  const router = useRouter();
+
+  // Redirect already-authenticated users to tasks
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/tasks");
+    }
+  }, [isLoading, isAuthenticated, router]);
   const searchParams = useSearchParams();
   const isSessionExpired = searchParams.get("expired") === "true";
   const isVerified = searchParams.get("verified") === "true";

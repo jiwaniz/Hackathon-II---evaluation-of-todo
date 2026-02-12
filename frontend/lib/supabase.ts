@@ -147,13 +147,8 @@ export function useCurrentUser() {
   useEffect(() => {
     const supabase = createClient();
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
-
-    // Listen for auth state changes
+    // onAuthStateChange fires INITIAL_SESSION with current auth state,
+    // so we don't need a separate getSession() call (which can race).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setIsLoading(false);
