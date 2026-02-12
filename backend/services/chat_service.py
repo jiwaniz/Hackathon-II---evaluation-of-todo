@@ -31,20 +31,26 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = """You are a helpful todo task management assistant. You help users manage their tasks through natural language conversation.
 
 You have access to the following tools:
-- add_task: Create a new task (requires title, optional description)
-- list_tasks: View tasks (filter by status: "all", "pending", "completed")
-- complete_task: Mark a task as done (requires task_id)
-- delete_task: Remove a task (requires task_id)
-- update_task: Change task title or description (requires task_id)
+- add_task: Create a NEW task (requires title, optional description). ONLY use this for brand new tasks.
+- list_tasks: View tasks (filter by status: "all", "pending", "completed"). Returns task objects with numeric "id" fields.
+- complete_task: Mark a task as done (requires task_id as an INTEGER, e.g. 42)
+- delete_task: Remove a task (requires task_id as an INTEGER, e.g. 42)
+- update_task: Change an EXISTING task's title or description (requires task_id as an INTEGER, e.g. 42)
+
+CRITICAL RULES:
+1. task_id MUST always be a numeric INTEGER (like 5, 12, 42). NEVER pass a task title string as task_id.
+2. When a user wants to update, complete, delete, or modify an EXISTING task, you MUST call list_tasks FIRST to find the correct numeric task ID, then use the appropriate tool with that numeric ID.
+3. NEVER use add_task when the user wants to update/modify/change an existing task. Use update_task instead.
+4. NEVER use add_task when the user wants to complete an existing task. Use complete_task instead.
 
 Guidelines:
-- When a user mentions adding, creating, or remembering something, use add_task
-- When a user asks to see, show, or list tasks, use list_tasks with appropriate filter
-- When a user says done, complete, or finished, use complete_task
-- When a user says delete, remove, or cancel, use delete_task
-- When a user says change, update, or rename, use update_task
+- "add", "create", "new task", "remember to" → add_task (only for NEW tasks)
+- "show", "list", "see my tasks", "what tasks" → list_tasks
+- "done", "complete", "finished", "mark as done" → list_tasks first to get ID, then complete_task
+- "delete", "remove", "cancel" → list_tasks first to get ID, then delete_task
+- "change", "update", "rename", "edit", "modify" → list_tasks first to get ID, then update_task
 - Always confirm actions with a friendly response including task details
-- If a user gives an ambiguous command (like "delete the meeting task"), use list_tasks first to find the right task, then perform the action
+- If a user refers to a task by name (like "complete the exam task"), ALWAYS call list_tasks first, find the matching task's numeric ID, then call complete_task/update_task/delete_task with that integer ID
 - If you cannot determine which task the user means, ask for clarification
 - If a message is not related to task management, politely explain you can only help with tasks
 - Format task lists in a clear, readable way
@@ -90,11 +96,11 @@ def _build_groq_tools() -> list[dict]:
             "type": "function",
             "function": {
                 "name": "complete_task",
-                "description": "Mark a task as complete",
+                "description": "Mark a task as complete. IMPORTANT: You MUST call list_tasks first to get the numeric task ID. task_id must be an integer like 5 or 42, NOT a task title.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "task_id": {"type": "integer", "description": "The task ID to complete"},
+                        "task_id": {"type": "string", "description": "The numeric task ID to complete. Get this from list_tasks. Example: 42"},
                     },
                     "required": ["task_id"],
                 },
@@ -104,11 +110,11 @@ def _build_groq_tools() -> list[dict]:
             "type": "function",
             "function": {
                 "name": "delete_task",
-                "description": "Remove a task permanently",
+                "description": "Remove a task permanently. IMPORTANT: You MUST call list_tasks first to get the numeric task ID. task_id must be an integer like 5 or 42, NOT a task title.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "task_id": {"type": "integer", "description": "The task ID to delete"},
+                        "task_id": {"type": "string", "description": "The numeric task ID to delete. Get this from list_tasks. Example: 42"},
                     },
                     "required": ["task_id"],
                 },
@@ -118,11 +124,11 @@ def _build_groq_tools() -> list[dict]:
             "type": "function",
             "function": {
                 "name": "update_task",
-                "description": "Modify task title or description",
+                "description": "Modify an EXISTING task's title or description. IMPORTANT: You MUST call list_tasks first to get the numeric task ID. NEVER use add_task to update an existing task.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "task_id": {"type": "integer", "description": "The task ID to update"},
+                        "task_id": {"type": "string", "description": "The numeric task ID to update. Get this from list_tasks. Example: 42"},
                         "title": {"type": "string", "description": "New title (optional)"},
                         "description": {"type": "string", "description": "New description (optional)"},
                     },
@@ -136,6 +142,13 @@ def _build_groq_tools() -> list[dict]:
 def _execute_tool(tool_name: str, args: dict, user_id: str) -> str:
     """Execute an MCP tool by name with the given arguments."""
     from mcp_server.tools import add_task, complete_task, delete_task, list_tasks, update_task
+
+    # Coerce task_id to int — LLMs sometimes pass strings like "42" or even task titles
+    if "task_id" in args:
+        try:
+            args["task_id"] = int(args["task_id"])
+        except (ValueError, TypeError):
+            return json.dumps({"error": f"Invalid task_id '{args['task_id']}'. task_id must be a numeric integer. Use list_tasks to find the correct task ID."})
 
     tool_map = {
         "add_task": lambda a: add_task(user_id=user_id, **a),
