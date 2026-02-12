@@ -4,6 +4,7 @@ Phase 2 uses Better Auth session tokens.
 Phase 3 uses Supabase JWT tokens verified via the shared JWT secret.
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -14,6 +15,8 @@ from sqlmodel import Session, select, text
 from config import settings
 from database import get_session
 from models import User
+
+logger = logging.getLogger(__name__)
 
 
 def extract_token_from_header(authorization: Optional[str]) -> str:
@@ -51,24 +54,43 @@ def verify_supabase_jwt(token: str) -> dict:
             detail={"code": "CONFIG_ERROR", "message": "Supabase JWT secret not configured"},
         )
 
+    import base64
+
+    # Try raw secret first, then base64-decoded
+    secrets_to_try = [settings.supabase_jwt_secret]
     try:
-        payload = jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            options={"verify_aud": False},
-        )
-        if not payload.get("sub"):
-            raise HTTPException(
-                status_code=401,
-                detail={"code": "INVALID_TOKEN", "message": "Token missing sub claim"},
+        decoded_secret = base64.b64decode(settings.supabase_jwt_secret)
+        secrets_to_try.append(decoded_secret)
+    except Exception:
+        pass
+
+    last_error = None
+    for i, secret in enumerate(secrets_to_try):
+        try:
+            payload = jwt.decode(
+                token,
+                secret,
+                algorithms=["HS256"],
+                options={"verify_aud": False},
             )
-        return payload
-    except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail={"code": "INVALID_TOKEN", "message": "Invalid or expired token"},
-        )
+            if not payload.get("sub"):
+                raise HTTPException(
+                    status_code=401,
+                    detail={"code": "INVALID_TOKEN", "message": "Token missing sub claim"},
+                )
+            if i == 1:
+                logger.info("JWT verified with base64-decoded secret")
+            return payload
+        except JWTError as e:
+            last_error = e
+            logger.warning(f"JWT verify attempt {i} failed: {type(e).__name__}: {e}")
+            continue
+
+    logger.error(f"All JWT verification attempts failed. Last error: {last_error}")
+    raise HTTPException(
+        status_code=401,
+        detail={"code": "INVALID_TOKEN", "message": f"Invalid or expired token: {last_error}"},
+    )
 
 
 def verify_session_token(token: str, db_session: Session) -> str:
