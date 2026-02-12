@@ -96,20 +96,31 @@ def verify_session_token(token: str, db_session: Session) -> str:
 
 
 def _resolve_user_id(token: str, db_session: Session) -> tuple[str, dict]:
-    """Resolve user ID from token, trying Supabase JWT first, then Better Auth session.
+    """Resolve user ID from token.
+
+    Phase 3 uses Supabase JWT exclusively. Better Auth session fallback is
+    only attempted if SUPABASE_JWT_SECRET is not configured AND the session
+    table exists (Phase 2 compatibility).
 
     Returns:
         Tuple of (user_id, jwt_payload). jwt_payload is empty dict for Better Auth sessions.
     """
     if settings.supabase_jwt_secret:
-        try:
-            payload = verify_supabase_jwt(token)
-            return payload["sub"], payload
-        except HTTPException:
-            pass
+        # Phase 3: verify Supabase JWT
+        payload = verify_supabase_jwt(token)
+        return payload["sub"], payload
 
-    user_id = verify_session_token(token, db_session)
-    return user_id, {}
+    # Phase 2 fallback: Better Auth session token
+    # Wrapped to avoid 500 if session table doesn't exist
+    from sqlalchemy.exc import SQLAlchemyError
+    try:
+        user_id = verify_session_token(token, db_session)
+        return user_id, {}
+    except SQLAlchemyError:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "AUTH_UNAVAILABLE", "message": "Authentication service not configured"},
+        )
 
 
 def _get_or_provision_user(user_id: str, jwt_payload: dict, db_session: Session) -> User:
