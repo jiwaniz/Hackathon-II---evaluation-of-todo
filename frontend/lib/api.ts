@@ -6,9 +6,11 @@
  */
 
 import type { Task, TaskCreate, TaskUpdate, Priority, Tag } from "../types";
-import { getAuthToken } from "./auth-client";
+import { getSupabaseToken } from "./supabase";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use relative URLs so requests go through Next.js rewrites (port 7860 → 8000).
+// The NEXT_PUBLIC_API_URL env var is intentionally left empty/unused here.
+const API_URL = "";
 
 /**
  * API response wrapper type.
@@ -68,14 +70,10 @@ export class ApiClientError extends Error {
 }
 
 /**
- * Get the auth token from Better Auth session.
- * This should be called from client components.
+ * Get the auth token from Supabase session.
  */
 async function getToken(): Promise<string | null> {
-  if (typeof window !== "undefined") {
-    return getAuthToken();
-  }
-  return null;
+  return getSupabaseToken();
 }
 
 /**
