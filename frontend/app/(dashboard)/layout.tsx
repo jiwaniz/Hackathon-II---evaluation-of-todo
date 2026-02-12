@@ -4,16 +4,18 @@ import Link from "next/link";
 
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { UserMenu } from "@/components/auth/UserMenu";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 /**
- * Protected dashboard layout with navigation and user menu.
+ * Protected dashboard layout with navigation, user menu, and floating AI chat.
  *
  * Wraps all dashboard pages in AuthGuard to ensure authentication.
  * Provides consistent header with navigation and user menu.
+ * Floating ChatWidget appears on all dashboard pages (bottom-right).
  */
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
@@ -37,12 +39,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 My Tasks
               </Link>
-              <Link
-                href="/chat"
-                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600"
-              >
-                AI Chat
-              </Link>
             </nav>
 
             {/* User menu */}
@@ -54,6 +50,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {children}
         </main>
+
+        {/* Floating AI Chat Widget */}
+        <ChatWidget />
       </div>
     </AuthGuard>
   );
