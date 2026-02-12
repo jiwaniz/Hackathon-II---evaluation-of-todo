@@ -4,12 +4,13 @@ Phase 2 uses Better Auth session tokens.
 Phase 3 uses Supabase JWT tokens verified via the shared JWT secret.
 """
 
+import base64
 import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+import jwt as pyjwt
 from fastapi import Depends, Header, HTTPException, Request
-from jose import JWTError, jwt
 from sqlmodel import Session, select, text
 
 from config import settings
@@ -56,15 +57,10 @@ def verify_supabase_jwt(token: str) -> dict:
 
     # Log the token header to identify the algorithm
     try:
-        header = jwt.get_unverified_header(token)
+        header = pyjwt.get_unverified_header(token)
         logger.info(f"JWT header: alg={header.get('alg')}, typ={header.get('typ')}")
     except Exception as e:
         logger.error(f"Failed to read JWT header: {e}")
-
-    # Supabase may use HS256, HS384, or HS512
-    allowed_algorithms = ["HS256", "HS384", "HS512"]
-
-    import base64
 
     # Try raw secret first, then base64-decoded
     secrets_to_try = [
@@ -79,10 +75,10 @@ def verify_supabase_jwt(token: str) -> dict:
     last_error = None
     for label, secret in secrets_to_try:
         try:
-            payload = jwt.decode(
+            payload = pyjwt.decode(
                 token,
                 secret,
-                algorithms=allowed_algorithms,
+                algorithms=["HS256", "HS384", "HS512"],
                 options={"verify_aud": False},
             )
             if not payload.get("sub"):
@@ -92,7 +88,11 @@ def verify_supabase_jwt(token: str) -> dict:
                 )
             logger.info(f"JWT verified successfully with {label} secret")
             return payload
-        except JWTError as e:
+        except pyjwt.ExpiredSignatureError as e:
+            last_error = e
+            logger.warning(f"JWT verify with {label} secret failed: token expired")
+            continue
+        except pyjwt.InvalidTokenError as e:
             last_error = e
             logger.warning(f"JWT verify with {label} secret failed: {type(e).__name__}: {e}")
             continue
