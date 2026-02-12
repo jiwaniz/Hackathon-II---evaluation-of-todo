@@ -26,7 +26,12 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
   if (contentType) headers["Content-Type"] = contentType;
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
-  const body = hasBody ? await request.arrayBuffer() : undefined;
+  let body: Uint8Array | undefined;
+  if (hasBody) {
+    // Copy into a Uint8Array to avoid detached ArrayBuffer errors
+    const buf = await request.arrayBuffer();
+    body = new Uint8Array(buf);
+  }
 
   try {
     const response = await fetch(targetUrl, {
@@ -36,7 +41,7 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
     });
 
     const data = await response.arrayBuffer();
-    return new NextResponse(data, {
+    return new NextResponse(Buffer.from(data), {
       status: response.status,
       headers: { "Content-Type": response.headers.get("Content-Type") || "application/json" },
     });
