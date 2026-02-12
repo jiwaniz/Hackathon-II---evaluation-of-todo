@@ -79,6 +79,10 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "environment": settings.environment,
+        "auth": {
+            "supabase_jwt_configured": bool(settings.supabase_jwt_secret),
+            "supabase_url_configured": bool(settings.supabase_url),
+        },
     }
 
 
