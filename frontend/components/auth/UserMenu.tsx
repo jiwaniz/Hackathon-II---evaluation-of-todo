@@ -44,10 +44,10 @@ export function UserMenu() {
     return null;
   }
 
-  const displayName = user.name || user.email.split("@")[0];
+  const displayName: string = user.user_metadata?.name || user.email?.split("@")[0] || "User";
   const initials = displayName
     .split(" ")
-    .map((n) => n[0])
+    .map((n: string) => n[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
@@ -89,7 +89,7 @@ export function UserMenu() {
           {/* User info */}
           <div className="border-b border-gray-100 px-4 py-3">
             <p className="text-sm font-medium text-gray-900">{displayName}</p>
-            <p className="truncate text-sm text-gray-500">{user.email}</p>
+            <p className="truncate text-sm text-gray-500">{user.email ?? ""}</p>
           </div>
 
           {/* Menu items */}
