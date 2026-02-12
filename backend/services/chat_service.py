@@ -31,11 +31,11 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = """You are a helpful todo task management assistant. You help users manage their tasks through natural language conversation.
 
 You have access to the following tools:
-- add_task: Create a NEW task (requires title, optional description). ONLY use this for brand new tasks.
+- add_task: Create a NEW task (requires title, optional description and priority). ONLY use this for brand new tasks.
 - list_tasks: View tasks (filter by status: "all", "pending", "completed"). Returns task objects with numeric "id" fields.
 - complete_task: Mark a task as done (requires task_id as an INTEGER, e.g. 42)
 - delete_task: Remove a task (requires task_id as an INTEGER, e.g. 42)
-- update_task: Change an EXISTING task's title or description (requires task_id as an INTEGER, e.g. 42)
+- update_task: Change an EXISTING task's title, description, or priority (requires task_id as an INTEGER, e.g. 42)
 
 CRITICAL RULES:
 1. task_id MUST always be a numeric INTEGER (like 5, 12, 42). NEVER pass a task title string as task_id.
@@ -54,6 +54,12 @@ Guidelines:
 - If you cannot determine which task the user means, ask for clarification
 - If a message is not related to task management, politely explain you can only help with tasks
 - Format task lists in a clear, readable way
+- When a user first greets you or says "hi"/"hello", respond with a brief welcome and show example commands like:
+  • "Create a task called Buy groceries with high priority"
+  • "Show my tasks"
+  • "Mark task Buy groceries as complete"
+  • "Update task Buy groceries priority to low"
+  • "Delete task Buy groceries"
 """
 
 
@@ -64,12 +70,13 @@ def _build_groq_tools() -> list[dict]:
             "type": "function",
             "function": {
                 "name": "add_task",
-                "description": "Create a new task for the user",
+                "description": "Create a new task for the user. ONLY for brand new tasks, never for updating existing ones.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "title": {"type": "string", "description": "Task title (required)"},
                         "description": {"type": "string", "description": "Task description (optional)"},
+                        "priority": {"type": "string", "description": "Priority: 'high', 'medium', or 'low' (default: medium)", "enum": ["high", "medium", "low"]},
                     },
                     "required": ["title"],
                 },
@@ -124,13 +131,14 @@ def _build_groq_tools() -> list[dict]:
             "type": "function",
             "function": {
                 "name": "update_task",
-                "description": "Modify an EXISTING task's title or description. IMPORTANT: You MUST call list_tasks first to get the numeric task ID. NEVER use add_task to update an existing task.",
+                "description": "Modify an EXISTING task's title, description, or priority. IMPORTANT: You MUST call list_tasks first to get the numeric task ID. NEVER use add_task to update an existing task.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "task_id": {"type": "string", "description": "The numeric task ID to update. Get this from list_tasks. Example: 42"},
                         "title": {"type": "string", "description": "New title (optional)"},
                         "description": {"type": "string", "description": "New description (optional)"},
+                        "priority": {"type": "string", "description": "New priority: 'high', 'medium', or 'low' (optional)", "enum": ["high", "medium", "low"]},
                     },
                     "required": ["task_id"],
                 },
@@ -317,19 +325,20 @@ async def _run_gemini_agent(
     tool_declarations = [
         types.FunctionDeclaration(
             name="add_task",
-            description="Create a new task for the user",
+            description="Create a NEW task. Only for brand new tasks, never for updating existing ones.",
             parameters=types.Schema(
                 type=types.Type.OBJECT,
                 properties={
                     "title": types.Schema(type=types.Type.STRING, description="Task title (required)"),
                     "description": types.Schema(type=types.Type.STRING, description="Task description (optional)"),
+                    "priority": types.Schema(type=types.Type.STRING, description="Priority: high, medium, or low", enum=["high", "medium", "low"]),
                 },
                 required=["title"],
             ),
         ),
         types.FunctionDeclaration(
             name="list_tasks",
-            description="Retrieve tasks with optional status filter",
+            description="Retrieve tasks with optional status filter. Returns task objects with numeric id fields.",
             parameters=types.Schema(
                 type=types.Type.OBJECT,
                 properties={
@@ -343,35 +352,36 @@ async def _run_gemini_agent(
         ),
         types.FunctionDeclaration(
             name="complete_task",
-            description="Mark a task as complete",
+            description="Mark a task as complete. Call list_tasks first to get the numeric task ID.",
             parameters=types.Schema(
                 type=types.Type.OBJECT,
                 properties={
-                    "task_id": types.Schema(type=types.Type.INTEGER, description="The task ID to complete"),
+                    "task_id": types.Schema(type=types.Type.INTEGER, description="The numeric task ID to complete"),
                 },
                 required=["task_id"],
             ),
         ),
         types.FunctionDeclaration(
             name="delete_task",
-            description="Remove a task permanently",
+            description="Remove a task permanently. Call list_tasks first to get the numeric task ID.",
             parameters=types.Schema(
                 type=types.Type.OBJECT,
                 properties={
-                    "task_id": types.Schema(type=types.Type.INTEGER, description="The task ID to delete"),
+                    "task_id": types.Schema(type=types.Type.INTEGER, description="The numeric task ID to delete"),
                 },
                 required=["task_id"],
             ),
         ),
         types.FunctionDeclaration(
             name="update_task",
-            description="Modify task title or description",
+            description="Modify an existing task's title, description, or priority. Call list_tasks first to get the numeric task ID. Never use add_task to update.",
             parameters=types.Schema(
                 type=types.Type.OBJECT,
                 properties={
-                    "task_id": types.Schema(type=types.Type.INTEGER, description="The task ID to update"),
+                    "task_id": types.Schema(type=types.Type.INTEGER, description="The numeric task ID to update"),
                     "title": types.Schema(type=types.Type.STRING, description="New title (optional)"),
                     "description": types.Schema(type=types.Type.STRING, description="New description (optional)"),
+                    "priority": types.Schema(type=types.Type.STRING, description="New priority: high, medium, or low", enum=["high", "medium", "low"]),
                 },
                 required=["task_id"],
             ),

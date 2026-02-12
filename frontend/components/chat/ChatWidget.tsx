@@ -55,12 +55,14 @@ export default function ChatWidget() {
             {messages.length === 0 && (
               <div className="flex h-full items-center justify-center text-center text-gray-400">
                 <div>
-                  <p className="text-sm font-medium">Hi there!</p>
-                  <p className="mt-1 text-xs">
-                    Try &quot;Add a task to buy groceries&quot;
-                    <br />
-                    or &quot;Show my tasks&quot;
-                  </p>
+                  <p className="text-sm font-medium">Hi there! Try these commands:</p>
+                  <ul className="mt-2 space-y-1 text-xs text-left">
+                    <li>&bull; &quot;Create a task Buy groceries with high priority&quot;</li>
+                    <li>&bull; &quot;Show my tasks&quot;</li>
+                    <li>&bull; &quot;Mark Buy groceries as complete&quot;</li>
+                    <li>&bull; &quot;Update priority of Buy groceries to low&quot;</li>
+                    <li>&bull; &quot;Delete task Buy groceries&quot;</li>
+                  </ul>
                 </div>
               </div>
             )}

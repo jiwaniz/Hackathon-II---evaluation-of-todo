@@ -18,33 +18,42 @@ def _get_session() -> Session:
     return Session(get_engine())
 
 
-def add_task(user_id: str, title: str, description: str = "") -> str:
+def add_task(user_id: str, title: str, description: str = "", priority: str = "medium") -> str:
     """Create a new task for the user.
 
     Args:
         user_id: The authenticated user's ID
         title: Task title (required, 1-200 chars)
         description: Optional task description (max 1000 chars)
+        priority: Task priority - "high", "medium", or "low" (default: "medium")
 
     Returns:
         JSON string with task_id, status, and title
     """
+    from models.task import Priority
+
     if not title or not title.strip():
         return json.dumps({"error": "Task title is required"})
 
     if len(title) > 200:
         return json.dumps({"error": "Task title must be 200 characters or less"})
 
+    # Validate priority
+    priority_val = Priority.MEDIUM
+    if priority and priority.lower() in ("high", "medium", "low"):
+        priority_val = Priority(priority.lower())
+
     with _get_session() as session:
         task = Task(
             user_id=user_id,
             title=title.strip(),
             description=description.strip() if description else None,
+            priority=priority_val,
         )
         session.add(task)
         session.commit()
         session.refresh(task)
-        return json.dumps({"task_id": task.id, "status": "created", "title": task.title})
+        return json.dumps({"task_id": task.id, "status": "created", "title": task.title, "priority": task.priority.value})
 
 
 def list_tasks(user_id: str, status: str = "all") -> str:
@@ -136,19 +145,22 @@ def delete_task(user_id: str, task_id: int) -> str:
 
 
 def update_task(
-    user_id: str, task_id: int, title: str = "", description: str = ""
+    user_id: str, task_id: int, title: str = "", description: str = "", priority: str = ""
 ) -> str:
-    """Modify task title or description.
+    """Modify task title, description, or priority.
 
     Args:
         user_id: The authenticated user's ID
         task_id: The task ID to update
         title: New title (optional)
         description: New description (optional)
+        priority: New priority - "high", "medium", or "low" (optional)
 
     Returns:
         JSON string with task_id, status, and title
     """
+    from models.task import Priority
+
     with _get_session() as session:
         task = session.exec(
             select(Task).where(Task.id == task_id, Task.user_id == user_id)
@@ -165,8 +177,11 @@ def update_task(
         if description is not None and description != "":
             task.description = description.strip()
 
+        if priority and priority.lower() in ("high", "medium", "low"):
+            task.priority = Priority(priority.lower())
+
         task.updated_at = datetime.utcnow()
         session.add(task)
         session.commit()
         session.refresh(task)
-        return json.dumps({"task_id": task.id, "status": "updated", "title": task.title})
+        return json.dumps({"task_id": task.id, "status": "updated", "title": task.title, "priority": task.priority.value})
