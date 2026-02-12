@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from config import settings
+from database import create_db_and_tables
 from logging_config import get_logger, setup_logging
 from middleware.logging import RequestLoggingMiddleware
 from routes.auth import router as auth_router
@@ -16,6 +17,13 @@ from routes.chat import router as chat_router
 from routes.conversations import router as conversations_router
 from routes.tasks import router as tasks_router
 from routes.tags import router as tags_router
+
+# Ensure all models are registered in SQLModel metadata before create_all
+import models.user  # noqa: F401
+import models.task  # noqa: F401
+import models.tag  # noqa: F401
+import models.conversation  # noqa: F401
+import models.message  # noqa: F401
 
 # Initialize logging
 setup_logging()
@@ -25,8 +33,13 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events for startup and shutdown."""
-    # Startup
+    # Startup: ensure all DB tables exist (safe to run on every start)
     logger.info(f"Starting Evolution of Todo API in {settings.environment} mode")
+    try:
+        create_db_and_tables()
+        logger.info("Database tables verified/created")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
     yield
     # Shutdown
     logger.info("Shutting down Evolution of Todo API")
