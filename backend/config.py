@@ -1,18 +1,31 @@
 """Configuration management for the Evolution of Todo backend."""
 
-import os
 from functools import lru_cache
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Neon DB URL — same value already public in frontend/lib/auth.ts
+_NEON_DB_URL = (
+    "postgresql://neondb_owner:npg_VCELyK9WR3gP"
+    "@ep-falling-bar-a199lzbj-pooler.ap-southeast-1.aws.neon.tech"
+    "/neondb?sslmode=require"
+)
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
     # Database
     database_url: str = Field(
-        default="postgresql://localhost/evolution_of_todo",
+        default=_NEON_DB_URL,
         description="PostgreSQL connection string (Neon)",
     )
 
@@ -24,7 +37,7 @@ class Settings(BaseSettings):
 
     # Authentication (Phase 3 - Supabase Auth)
     supabase_url: str = Field(
-        default="",
+        default="https://nqqrfchwdhjmskwmzfyc.supabase.co",
         description="Supabase project URL",
     )
     supabase_jwt_secret: str = Field(
@@ -44,13 +57,13 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: str = Field(
-        default="http://localhost:3000",
+        default="http://localhost:3000,https://jiwaniz-to-do-evalution.hf.space",
         description="Comma-separated list of allowed origins",
     )
 
     # Environment
     environment: str = Field(
-        default="development",
+        default="production",
         description="Current environment (development, staging, production)",
     )
 
@@ -63,11 +76,6 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development mode."""
         return self.environment == "development"
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
 
 
 @lru_cache
