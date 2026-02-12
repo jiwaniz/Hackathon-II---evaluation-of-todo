@@ -14,7 +14,9 @@ const BACKEND_URL = "http://localhost:8000";
 
 async function proxy(request: NextRequest, params: { path: string[] }) {
   const { path } = await params;
-  const pathStr = path.join("/");
+  let pathStr = path.join("/");
+  // Ensure trailing slash to avoid FastAPI 307 redirects that break POST body
+  if (!pathStr.endsWith("/")) pathStr += "/";
   const search = request.nextUrl.search;
   const targetUrl = `${BACKEND_URL}/api/${pathStr}${search}`;
 
@@ -38,6 +40,7 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
       method: request.method,
       headers,
       body: body as BodyInit | undefined,
+      redirect: "follow",
     });
 
     const data = await response.arrayBuffer();
