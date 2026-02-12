@@ -47,6 +47,11 @@ export function useChat({ userId }: UseChatOptions) {
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMessage]);
+
+        // Notify tasks page to refresh when chat performed task operations
+        if (data.tool_calls && data.tool_calls.length > 0) {
+          window.dispatchEvent(new CustomEvent("tasks-updated"));
+        }
       } catch (err) {
         const errorMsg =
           err instanceof Error ? err.message : "Failed to send message";

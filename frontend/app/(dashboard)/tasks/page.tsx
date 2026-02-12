@@ -97,6 +97,16 @@ export default function TasksPage() {
     }
   }, [user?.id, fetchTasks]);
 
+  // Refresh tasks when chatbot performs task operations
+  useEffect(() => {
+    const handler = () => {
+      fetchTasks();
+      fetchTags();
+    };
+    window.addEventListener("tasks-updated", handler);
+    return () => window.removeEventListener("tasks-updated", handler);
+  }, [fetchTasks, fetchTags]);
+
   const handleCreateTask = async (data: TaskCreate) => {
     if (!user?.id) return;
 
