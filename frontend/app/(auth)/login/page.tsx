@@ -14,15 +14,15 @@ import { useCurrentUser } from "@/lib/supabase";
 function LoginContent() {
   const { isAuthenticated, isLoading } = useCurrentUser();
   const router = useRouter();
-
-  // Redirect already-authenticated users to tasks
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace("/tasks");
-    }
-  }, [isLoading, isAuthenticated, router]);
   const searchParams = useSearchParams();
   const isSessionExpired = searchParams.get("expired") === "true";
+
+  // Redirect already-authenticated users to tasks (but not if session just expired)
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && !isSessionExpired) {
+      router.replace("/tasks");
+    }
+  }, [isLoading, isAuthenticated, isSessionExpired, router]);
   const isVerified = searchParams.get("verified") === "true";
 
   return (

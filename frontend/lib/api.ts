@@ -6,7 +6,7 @@
  */
 
 import type { Task, TaskCreate, TaskUpdate, Priority, Tag } from "../types";
-import { getSupabaseToken } from "./supabase";
+import { getSupabaseToken, signOut } from "./supabase";
 
 // Use relative URLs so requests go through Next.js rewrites (port 7860 → 8000).
 // The NEXT_PUBLIC_API_URL env var is intentionally left empty/unused here.
@@ -106,10 +106,10 @@ async function fetchApi<T>(
 
     // Handle session expiration (T140)
     if (response.status === 401) {
-      // Clear the stored token
       if (typeof window !== "undefined") {
         localStorage.removeItem("auth_token");
-        // Redirect to login page
+        // Sign out from Supabase to clear browser session, then redirect
+        await signOut();
         window.location.href = "/login?expired=true";
       }
     }
