@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { useCurrentUser } from "@/lib/auth-client";
+import { useCurrentUser } from "@/lib/supabase";
 import { api } from "@/lib/api";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { EditTaskDialog } from "@/components/tasks/EditTaskDialog";

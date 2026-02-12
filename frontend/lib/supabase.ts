@@ -4,7 +4,10 @@
  * Provides email/password authentication with mandatory email verification.
  */
 
+"use client";
+
 import { createBrowserClient } from "@supabase/ssr";
+import { useEffect, useState } from "react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -131,4 +134,38 @@ export async function getSession() {
 export async function getUser() {
   const session = await getSession();
   return session?.user ?? null;
+}
+
+/**
+ * React hook for current Supabase user.
+ * Replaces Better Auth's useCurrentUser.
+ */
+export function useCurrentUser() {
+  const [user, setUser] = useState<ReturnType<typeof createClient> extends infer T ? any : any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return {
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    isEmailVerified: !!user?.email_confirmed_at,
+  };
 }

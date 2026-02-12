@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 
-import { handleSignOut, useCurrentUser } from "@/lib/auth-client";
+import { signOut, useCurrentUser } from "@/lib/supabase";
 
 /**
  * User menu dropdown component showing user info and logout button.
@@ -30,7 +30,7 @@ export function UserMenu() {
   }, []);
 
   const onSignOut = async () => {
-    await handleSignOut();
+    await signOut();
     router.push("/");
   };
 
