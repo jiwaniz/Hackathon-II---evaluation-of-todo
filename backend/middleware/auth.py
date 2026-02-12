@@ -1,15 +1,15 @@
 """Authentication middleware supporting both Better Auth sessions and Supabase JWT.
 
 Phase 2 uses Better Auth session tokens.
-Phase 3 uses Supabase JWT tokens verified via the shared JWT secret.
+Phase 3 uses Supabase JWT tokens verified via the JWKS public key.
 """
 
-import base64
 import logging
 from datetime import datetime, timezone
 from typing import Optional
 
 import jwt as pyjwt
+from jwt import PyJWKClient
 from fastapi import Depends, Header, HTTPException, Request
 from sqlmodel import Session, select, text
 
@@ -18,6 +18,19 @@ from database import get_session
 from models import User
 
 logger = logging.getLogger(__name__)
+
+# Cache the JWKS client so we don't fetch keys on every request
+_jwks_client: Optional[PyJWKClient] = None
+
+
+def _get_jwks_client() -> PyJWKClient:
+    """Get or create the cached JWKS client for Supabase."""
+    global _jwks_client
+    if _jwks_client is None:
+        jwks_url = f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
+        _jwks_client = PyJWKClient(jwks_url, cache_keys=True)
+        logger.info(f"JWKS client initialized: {jwks_url}")
+    return _jwks_client
 
 
 def extract_token_from_header(authorization: Optional[str]) -> str:
@@ -38,7 +51,10 @@ def extract_token_from_header(authorization: Optional[str]) -> str:
 
 
 def verify_supabase_jwt(token: str) -> dict:
-    """Verify a Supabase JWT token and return the full payload.
+    """Verify a Supabase JWT token using the JWKS public key.
+
+    Supabase uses ES256 (ECDSA) algorithm. The public key is fetched
+    from the JWKS endpoint and cached.
 
     Args:
         token: The JWT token from Supabase Auth
@@ -49,59 +65,52 @@ def verify_supabase_jwt(token: str) -> dict:
     Raises:
         HTTPException: If token is invalid or expired
     """
-    if not settings.supabase_jwt_secret:
+    if not settings.supabase_url:
         raise HTTPException(
             status_code=401,
-            detail={"code": "CONFIG_ERROR", "message": "Supabase JWT secret not configured"},
+            detail={"code": "CONFIG_ERROR", "message": "Supabase URL not configured"},
         )
 
-    # Log the token header to identify the algorithm
     try:
-        header = pyjwt.get_unverified_header(token)
-        logger.info(f"JWT header: alg={header.get('alg')}, typ={header.get('typ')}")
-    except Exception as e:
-        logger.error(f"Failed to read JWT header: {e}")
+        # Get the signing key from JWKS endpoint
+        jwks_client = _get_jwks_client()
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
 
-    # Try raw secret first, then base64-decoded
-    secrets_to_try = [
-        ("raw", settings.supabase_jwt_secret),
-    ]
-    try:
-        decoded_secret = base64.b64decode(settings.supabase_jwt_secret)
-        secrets_to_try.append(("base64-decoded", decoded_secret))
-    except Exception:
-        pass
+        # Decode and verify the token
+        payload = pyjwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["ES256"],
+            options={"verify_aud": False},
+        )
 
-    last_error = None
-    for label, secret in secrets_to_try:
-        try:
-            payload = pyjwt.decode(
-                token,
-                secret,
-                algorithms=["HS256", "HS384", "HS512"],
-                options={"verify_aud": False},
+        if not payload.get("sub"):
+            raise HTTPException(
+                status_code=401,
+                detail={"code": "INVALID_TOKEN", "message": "Token missing sub claim"},
             )
-            if not payload.get("sub"):
-                raise HTTPException(
-                    status_code=401,
-                    detail={"code": "INVALID_TOKEN", "message": "Token missing sub claim"},
-                )
-            logger.info(f"JWT verified successfully with {label} secret")
-            return payload
-        except pyjwt.ExpiredSignatureError as e:
-            last_error = e
-            logger.warning(f"JWT verify with {label} secret failed: token expired")
-            continue
-        except pyjwt.InvalidTokenError as e:
-            last_error = e
-            logger.warning(f"JWT verify with {label} secret failed: {type(e).__name__}: {e}")
-            continue
 
-    logger.error(f"All JWT verification attempts failed. Last error: {last_error}")
-    raise HTTPException(
-        status_code=401,
-        detail={"code": "INVALID_TOKEN", "message": f"Invalid or expired token: {last_error}"},
-    )
+        logger.info(f"JWT verified successfully for user {payload['sub']}")
+        return payload
+
+    except pyjwt.ExpiredSignatureError:
+        logger.warning("JWT verification failed: token expired")
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "TOKEN_EXPIRED", "message": "Token has expired"},
+        )
+    except pyjwt.InvalidTokenError as e:
+        logger.warning(f"JWT verification failed: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "INVALID_TOKEN", "message": f"Invalid token: {e}"},
+        )
+    except Exception as e:
+        logger.error(f"JWT verification error: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "AUTH_ERROR", "message": f"Authentication error: {e}"},
+        )
 
 
 def verify_session_token(token: str, db_session: Session) -> str:
@@ -131,15 +140,15 @@ def verify_session_token(token: str, db_session: Session) -> str:
 def _resolve_user_id(token: str, db_session: Session) -> tuple[str, dict]:
     """Resolve user ID from token.
 
-    Phase 3 uses Supabase JWT exclusively. Better Auth session fallback is
-    only attempted if SUPABASE_JWT_SECRET is not configured AND the session
+    Phase 3 uses Supabase JWT (ES256 via JWKS). Better Auth session fallback
+    is only attempted if SUPABASE_URL is not configured AND the session
     table exists (Phase 2 compatibility).
 
     Returns:
         Tuple of (user_id, jwt_payload). jwt_payload is empty dict for Better Auth sessions.
     """
-    if settings.supabase_jwt_secret:
-        # Phase 3: verify Supabase JWT
+    if settings.supabase_url:
+        # Phase 3: verify Supabase JWT via JWKS
         payload = verify_supabase_jwt(token)
         return payload["sub"], payload
 
