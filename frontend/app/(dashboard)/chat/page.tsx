@@ -2,12 +2,21 @@
 
 import { useChat } from "@/hooks/useChat";
 import ChatWindow from "@/components/chat/ChatWindow";
+import { useCurrentUser } from "@/lib/supabase";
 
 export default function ChatPage() {
-  // TODO: Replace with actual user ID from Supabase auth session
-  const userId = "demo-user";
+  const { user, isLoading: authLoading } = useCurrentUser();
+  const userId = user?.id ?? "";
 
   const { messages, isLoading, error, sendMessage } = useChat({ userId });
+
+  if (authLoading) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-3xl flex-col p-4">
