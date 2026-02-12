@@ -4,8 +4,10 @@ FROM node:20-slim AS frontend-builder
 
 WORKDIR /frontend
 
-# Accept build arguments for Next.js public env vars (with defaults for build)
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+# Accept build arguments for Next.js public env vars
+# NEXT_PUBLIC_API_URL intentionally left empty - API calls use relative URLs
+# proxied through Next.js rewrites (next.config.ts) to avoid localhost:8000 from browser
+ARG NEXT_PUBLIC_API_URL=""
 ARG NEXT_PUBLIC_SUPABASE_URL=https://nqqrfchwdhjmskwmzfyc.supabase.co
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xcXJmY2h3ZGhqbXNrd216ZnljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDMwMjUsImV4cCI6MjA4NTY3OTAyNX0.Vfo-rLG0I6kc3y1FvJFQarfoqmIcO7nsQYGu01HJj5o
 
@@ -59,6 +61,7 @@ COPY --from=frontend-builder /frontend/.next /app/frontend/.next
 COPY --from=frontend-builder /frontend/public /app/frontend/public
 COPY --from=frontend-builder /frontend/node_modules /app/frontend/node_modules
 COPY --from=frontend-builder /frontend/package.json /app/frontend/package.json
+COPY --from=frontend-builder /frontend/next.config.ts /app/frontend/next.config.ts
 
 # Expose ports
 EXPOSE 7860
