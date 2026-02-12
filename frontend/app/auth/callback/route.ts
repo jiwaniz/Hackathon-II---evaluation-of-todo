@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!exchangeError) {
-      // Session created - redirect to dashboard
-      return NextResponse.redirect(new URL("/dashboard", APP_URL));
+      // Session created - redirect to tasks
+      return NextResponse.redirect(new URL("/tasks", APP_URL));
     }
 
     // PKCE verifier missing means the email IS verified (Supabase confirmed it)
