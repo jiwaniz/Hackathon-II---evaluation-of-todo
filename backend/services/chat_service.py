@@ -254,26 +254,37 @@ async def process_chat_message(
     tool_calls_log = []
     response_text = None
 
+    logger.info(f"LLM keys: google_api_key={'SET' if settings.google_api_key else 'EMPTY'}, groq_api_key={'SET' if settings.groq_api_key else 'EMPTY'}")
+
     # Attempt 1: Gemini 2.0 Flash
     if settings.google_api_key:
         for model_name in ["gemini-2.0-flash", "gemini-2.0-flash-lite"]:
             try:
+                logger.info(f"Trying {model_name}...")
                 response_text, tool_calls_log = await _run_gemini_agent(
                     history_for_agent, user_id, model_name
                 )
+                logger.info(f"{model_name} succeeded")
                 break
             except Exception as e:
                 logger.warning(f"{model_name} failed: {e}")
                 continue
+    else:
+        logger.warning("No GOOGLE_API_KEY configured, skipping Gemini")
 
     # Attempt 2: Groq with tool calling
     if response_text is None and settings.groq_api_key:
         try:
+            logger.info("Trying Groq llama-3.3-70b-versatile...")
             response_text, tool_calls_log = _get_groq_response(history_for_agent, user_id)
+            logger.info("Groq succeeded")
         except Exception as groq_err:
             logger.error(f"Groq also failed: {groq_err}")
+    elif response_text is None:
+        logger.warning("No GROQ_API_KEY configured, skipping Groq")
 
     if response_text is None:
+        logger.error("ALL LLM providers failed or unconfigured — returning fallback error message")
         response_text = "I'm sorry, I'm having trouble right now. Please try again in a moment."
 
     # Store assistant response

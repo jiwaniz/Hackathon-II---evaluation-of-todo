@@ -88,6 +88,17 @@ async def health_check():
     }
 
 
+@app.get("/api/debug/llm-status", tags=["debug"])
+async def llm_status():
+    """Check which LLM providers are configured."""
+    return {
+        "google_api_key": "SET" if settings.google_api_key else "EMPTY",
+        "groq_api_key": "SET" if settings.groq_api_key else "EMPTY",
+        "supabase_url": "SET" if settings.supabase_url else "EMPTY",
+        "supabase_jwt_secret": "SET" if settings.supabase_jwt_secret else "EMPTY",
+    }
+
+
 @app.get("/", tags=["root"])
 async def root():
     """Root endpoint with API information."""
