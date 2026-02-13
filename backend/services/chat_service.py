@@ -60,6 +60,13 @@ Guidelines:
   • "Mark task Buy groceries as complete"
   • "Update task Buy groceries priority to low"
   • "Delete task Buy groceries"
+
+IMPORTANT RESPONSE STYLE:
+- Do NOT explain your reasoning, thinking process, or intermediate steps
+- Do NOT show tool call names, parameters, or say things like "Let me call list_tasks first"
+- Just perform the actions silently and give a brief, friendly confirmation of what was done
+- Example good response: "Done! Updated 'Hackathon 2' priority to high."
+- Example bad response: "I'll first call list_tasks to find the ID, then call update_task..."
 """
 
 
@@ -207,17 +214,31 @@ def _get_groq_response(messages: list[dict], user_id: str) -> tuple[str, list[di
 
             for tc in choice.message.tool_calls:
                 tool_name = tc.function.name
-                tool_args = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                try:
+                    tool_args = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                except json.JSONDecodeError:
+                    tool_args = {}
 
                 logger.info(f"[Groq] Agent calling tool: {tool_name} with args: {tool_args}")
 
-                result = _execute_tool(tool_name, tool_args, user_id)
+                try:
+                    result = _execute_tool(tool_name, tool_args, user_id)
+                except Exception as tool_err:
+                    logger.error(f"[Groq] Tool {tool_name} execution error: {tool_err}")
+                    result = json.dumps({"error": f"Tool execution failed: {str(tool_err)}"})
 
-                tool_calls_log.append({
-                    "tool": tool_name,
-                    "input": tool_args,
-                    "output": json.loads(result),
-                })
+                try:
+                    tool_calls_log.append({
+                        "tool": tool_name,
+                        "input": tool_args,
+                        "output": json.loads(result),
+                    })
+                except json.JSONDecodeError:
+                    tool_calls_log.append({
+                        "tool": tool_name,
+                        "input": tool_args,
+                        "output": {"raw": result},
+                    })
 
                 # Add tool result as a message
                 groq_messages.append({
@@ -294,21 +315,29 @@ async def process_chat_message(
         logger.warning("No GROQ_API_KEY configured, skipping Groq")
 
     # Attempt 3: If tools-based Groq failed, try Groq without tools as last resort
+    # Use a different system prompt that does NOT mention tools, to prevent fake tool output
     if response_text is None and settings.groq_api_key:
         try:
             logger.info("Trying Groq without tools as last resort...")
             from groq import Groq
             client = Groq(api_key=settings.groq_api_key)
-            simple_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-            for msg in history_for_agent[-6:]:  # Only last 6 messages to avoid context issues
-                simple_messages.append({"role": msg["role"], "content": msg["content"]})
+            no_tools_prompt = (
+                "You are a todo task assistant but your task management tools are temporarily unavailable. "
+                "You CANNOT create, update, delete, list, or complete any tasks right now. "
+                "Do NOT pretend to call any functions or show any tool outputs. "
+                "Apologize briefly and ask the user to try again in a moment."
+            )
+            simple_messages = [{"role": "system", "content": no_tools_prompt}]
+            for msg in history_for_agent[-4:]:
+                if msg["role"] in ("user", "assistant") and msg.get("content"):
+                    simple_messages.append({"role": msg["role"], "content": msg["content"]})
             resp = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=simple_messages,
-                max_tokens=1024,
+                max_tokens=256,
             )
-            response_text = resp.choices[0].message.content or "I couldn't process that. Could you try rephrasing?"
-            logger.info("Groq without tools succeeded")
+            response_text = resp.choices[0].message.content or "I'm having trouble with my tools right now. Please try again shortly."
+            logger.info("Groq without tools succeeded (degraded mode)")
         except Exception as e:
             logger.error(f"Groq without tools also failed: {e}")
 
