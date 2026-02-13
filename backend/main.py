@@ -99,6 +99,45 @@ async def llm_status():
     }
 
 
+@app.get("/api/debug/llm-test", tags=["debug"])
+async def llm_test():
+    """Quick test of LLM connectivity (no auth required)."""
+    results = {}
+
+    # Test Gemini
+    if settings.google_api_key:
+        try:
+            from google import genai
+            client = genai.Client(api_key=settings.google_api_key)
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents="Say hello in one word.",
+            )
+            results["gemini"] = {"status": "ok", "response": response.text[:100]}
+        except Exception as e:
+            results["gemini"] = {"status": "error", "error": str(e)[:300]}
+    else:
+        results["gemini"] = {"status": "no_key"}
+
+    # Test Groq
+    if settings.groq_api_key:
+        try:
+            from groq import Groq
+            client = Groq(api_key=settings.groq_api_key)
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": "Say hello in one word."}],
+                max_tokens=10,
+            )
+            results["groq"] = {"status": "ok", "response": response.choices[0].message.content[:100]}
+        except Exception as e:
+            results["groq"] = {"status": "error", "error": str(e)[:300]}
+    else:
+        results["groq"] = {"status": "no_key"}
+
+    return results
+
+
 @app.get("/", tags=["root"])
 async def root():
     """Root endpoint with API information."""
