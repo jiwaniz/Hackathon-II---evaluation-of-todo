@@ -138,6 +138,40 @@ async def llm_test():
     return results
 
 
+@app.get("/api/debug/groq-tools-test", tags=["debug"])
+async def groq_tools_test():
+    """Test Groq with the exact tool definitions used by chat."""
+    if not settings.groq_api_key:
+        return {"status": "no_key"}
+    try:
+        from groq import Groq
+        from services.chat_service import _build_groq_tools, SYSTEM_PROMPT
+        client = Groq(api_key=settings.groq_api_key)
+        tools = _build_groq_tools()
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": "show my tasks"},
+            ],
+            tools=tools,
+            tool_choice="auto",
+            max_tokens=1024,
+        )
+        choice = response.choices[0]
+        if choice.message.tool_calls:
+            return {
+                "status": "ok_with_tools",
+                "tool_calls": [
+                    {"name": tc.function.name, "args": tc.function.arguments}
+                    for tc in choice.message.tool_calls
+                ],
+            }
+        return {"status": "ok_text", "response": choice.message.content[:200]}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:500], "type": type(e).__name__}
+
+
 @app.get("/", tags=["root"])
 async def root():
     """Root endpoint with API information."""
