@@ -196,14 +196,27 @@ def _get_groq_response(messages: list[dict], user_id: str) -> tuple[str, list[di
     tool_calls_log = []
     max_turns = 5
 
-    for _ in range(max_turns):
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=groq_messages,
-            tools=tools,
-            tool_choice="auto",
-            max_tokens=1024,
-        )
+    for turn in range(max_turns):
+        # Retry up to 2 times on malformed tool call errors (Llama inconsistency)
+        response = None
+        for retry in range(3):
+            try:
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=groq_messages,
+                    tools=tools,
+                    tool_choice="auto",
+                    max_tokens=1024,
+                )
+                break
+            except Exception as api_err:
+                if "tool_use_failed" in str(api_err) and retry < 2:
+                    logger.warning(f"[Groq] Malformed tool call (retry {retry+1}/2): {api_err}")
+                    continue
+                raise
+
+        if response is None:
+            break
 
         choice = response.choices[0]
 
