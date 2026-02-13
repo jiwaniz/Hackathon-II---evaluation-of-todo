@@ -14,8 +14,8 @@ class ToolCallSchema(BaseModel):
     """Schema for a single tool invocation."""
 
     tool: str
-    input: dict
-    output: dict
+    input: dict = Field(default_factory=dict)
+    output: dict = Field(default_factory=dict)
 
 
 class ChatResponseData(BaseModel):
