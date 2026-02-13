@@ -215,8 +215,9 @@ def _get_groq_response(messages: list[dict], user_id: str) -> tuple[str, list[di
             for tc in choice.message.tool_calls:
                 tool_name = tc.function.name
                 try:
-                    tool_args = json.loads(tc.function.arguments) if tc.function.arguments else {}
-                except json.JSONDecodeError:
+                    parsed = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                    tool_args = parsed if isinstance(parsed, dict) else {}
+                except (json.JSONDecodeError, TypeError):
                     tool_args = {}
 
                 logger.info(f"[Groq] Agent calling tool: {tool_name} with args: {tool_args}")
