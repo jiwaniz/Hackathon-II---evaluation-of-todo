@@ -209,8 +209,22 @@ def _get_groq_response(messages: list[dict], user_id: str) -> tuple[str, list[di
 
         # If the model wants to call tools
         if choice.message.tool_calls:
-            # Add assistant message with tool calls
-            groq_messages.append(choice.message)
+            # Add assistant message with tool calls (serialize to dict for clean round-trip)
+            groq_messages.append({
+                "role": "assistant",
+                "content": choice.message.content or "",
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments or "{}",
+                        },
+                    }
+                    for tc in choice.message.tool_calls
+                ],
+            })
 
             for tc in choice.message.tool_calls:
                 tool_name = tc.function.name
