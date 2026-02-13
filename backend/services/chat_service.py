@@ -181,7 +181,9 @@ def _get_groq_response(messages: list[dict], user_id: str) -> tuple[str, list[di
 
     groq_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for msg in messages:
-        groq_messages.append({"role": msg["role"], "content": msg["content"]})
+        # Only include user and assistant text messages (skip any tool-related history)
+        if msg["role"] in ("user", "assistant") and msg.get("content"):
+            groq_messages.append({"role": msg["role"], "content": msg["content"]})
 
     tools = _build_groq_tools()
     tool_calls_log = []
@@ -287,9 +289,28 @@ async def process_chat_message(
             response_text, tool_calls_log = _get_groq_response(history_for_agent, user_id)
             logger.info("Groq succeeded")
         except Exception as groq_err:
-            logger.error(f"Groq also failed: {groq_err}")
+            logger.error(f"Groq also failed: {groq_err}", exc_info=True)
     elif response_text is None:
         logger.warning("No GROQ_API_KEY configured, skipping Groq")
+
+    # Attempt 3: If tools-based Groq failed, try Groq without tools as last resort
+    if response_text is None and settings.groq_api_key:
+        try:
+            logger.info("Trying Groq without tools as last resort...")
+            from groq import Groq
+            client = Groq(api_key=settings.groq_api_key)
+            simple_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+            for msg in history_for_agent[-6:]:  # Only last 6 messages to avoid context issues
+                simple_messages.append({"role": msg["role"], "content": msg["content"]})
+            resp = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=simple_messages,
+                max_tokens=1024,
+            )
+            response_text = resp.choices[0].message.content or "I couldn't process that. Could you try rephrasing?"
+            logger.info("Groq without tools succeeded")
+        except Exception as e:
+            logger.error(f"Groq without tools also failed: {e}")
 
     if response_text is None:
         logger.error("ALL LLM providers failed or unconfigured — returning fallback error message")
