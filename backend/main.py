@@ -172,6 +172,29 @@ async def groq_tools_test():
         return {"status": "error", "error": str(e)[:500], "type": type(e).__name__}
 
 
+@app.post("/api/debug/chat-test", tags=["debug"])
+async def chat_test():
+    """End-to-end chat test using Groq with tools (no auth, fake user)."""
+    from services.chat_service import _get_groq_response
+    try:
+        messages = [{"role": "user", "content": "show my tasks"}]
+        response_text, tool_calls = _get_groq_response(messages, "test-debug-user")
+        return {
+            "status": "ok",
+            "response": response_text[:500],
+            "tool_calls_count": len(tool_calls),
+            "tool_calls": tool_calls,
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "error": str(e)[:500],
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc()[-1000:],
+        }
+
+
 @app.get("/", tags=["root"])
 async def root():
     """Root endpoint with API information."""
