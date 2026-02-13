@@ -173,11 +173,13 @@ async def groq_tools_test():
 
 
 @app.post("/api/debug/chat-test", tags=["debug"])
-async def chat_test():
+async def chat_test(request: Request):
     """End-to-end chat test using Groq with tools (no auth, fake user)."""
     from services.chat_service import _get_groq_response
     try:
-        messages = [{"role": "user", "content": "show my tasks"}]
+        body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+        msg = body.get("message", "show my tasks")
+        messages = [{"role": "user", "content": msg}]
         response_text, tool_calls = _get_groq_response(messages, "test-debug-user")
         return {
             "status": "ok",
