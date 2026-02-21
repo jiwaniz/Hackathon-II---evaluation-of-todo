@@ -1,0 +1,33 @@
+apiVersion: v2
+name: todo-chatbot
+description: A Helm chart for Todo AI Chatbot Kubernetes deployment
+type: application
+
+# Chart version
+version: 1.0.0
+
+# Application version
+appVersion: "1.0.0"
+
+# Metadata
+keywords:
+  - kubernetes
+  - deployment
+  - todo
+  - chatbot
+  - minikube
+
+maintainers:
+  - name: Evolution of Todo
+    email: todo@example.com
+
+# Source repository
+home: https://github.com/example/todo-chatbot
+sources:
+  - https://github.com/example/todo-chatbot
+
+# Chart dependencies (none for Phase 4)
+dependencies: []
+
+# Minimum Kubernetes version supported
+kubeVersion: ">=1.20.0"
