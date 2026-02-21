@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "todo-chatbot.fullname" . }}-backend-config
+  labels:
+    {{- include "todo-chatbot.labels" . | nindent 4 }}
+    app: todo-backend
+data:
+  # Database connection string
+  DATABASE_URL: {{ .Values.backend.environment.DATABASE_URL | quote }}
+
+  # Better Auth configuration (FR-018: Dynamic BETTER_AUTH_URL)
+  # This is injected at helm install time to match the access method:
+  # - Port-forward: http://localhost:3000
+  # - K8s service: http://todo-frontend:3000
+  # - Ingress: http://todo.local:3000
+  BETTER_AUTH_URL: {{ .Values.backend.environment.BETTER_AUTH_URL | default "http://todo-frontend:3000" | quote }}
+
+  # Log level configuration
+  LOG_LEVEL: "INFO"
+
+  # API configuration
+  API_HOST: "0.0.0.0"
+  API_PORT: {{ .Values.backend.port | quote }}
+
+  # CORS origins (for frontend communication)
+  # Allow localhost for development, service DNS for K8s, ingress hostname for Ingress access
+  CORS_ORIGINS: "http://localhost:3000,http://todo-frontend:3000,http://todo.local:3000"

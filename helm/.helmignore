@@ -1,0 +1,18 @@
+# Patterns to ignore when packaging Helm charts
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode
+.idea
+*.log
+.env
+.env.local
+README.md
+LICENSE
+.git
+.gitignore
+tests/
+docs/
+*.md

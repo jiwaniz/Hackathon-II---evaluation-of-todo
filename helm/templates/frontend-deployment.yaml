@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "todo-chatbot.fullname" . }}-frontend
+  labels:
+    {{- include "todo-chatbot.labels" . | nindent 4 }}
+    app: todo-frontend
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "todo-chatbot.frontend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "todo-chatbot.frontend.selectorLabels" . | nindent 8 }}
+    spec:
+      # ServiceAccount with RBAC permissions (inherited from backend if applicable)
+      serviceAccountName: {{ include "todo-chatbot.serviceAccountName" . }}
+
+      # Main application container
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image }}"
+        imagePullPolicy: {{ .Values.frontend.imagePullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.frontend.port }}
+          protocol: TCP
+
+        # Environment variables from ConfigMaps
+        envFrom:
+        - configMapRef:
+            name: {{ include "todo-chatbot.fullname" . }}-frontend-config
+
+        # Sensitive values from Secrets (if any)
+        env:
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: BETTER_AUTH_SECRET
+
+        # Resource requests and limits (FR-014)
+        resources:
+          requests:
+            cpu: {{ .Values.frontend.resources.requests.cpu }}
+            memory: {{ .Values.frontend.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.frontend.resources.limits.cpu }}
+            memory: {{ .Values.frontend.resources.limits.memory }}
+
+        # Liveness probe: Restart if /api/health fails
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        # Readiness probe: Only route traffic if /api/health returns 200
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: false
+
+      # Pod scheduling: Prefer not to schedule multiple replicas on same node
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - todo-frontend
+              topologyKey: kubernetes.io/hostname

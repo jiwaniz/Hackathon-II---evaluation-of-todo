@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+.github
+
+# Node
+node_modules
+npm-debug.log
+npm-debug.log*
+yarn-error.log
+yarn-debug.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+.next
+out/
+build/
+dist/
+
+# Testing
+.test/
+coverage/
+.jest_cache
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.log
+.env
+.env.local
+.env.*.local
+docs/
+README.md
+LICENSE

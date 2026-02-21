@@ -1,0 +1,75 @@
+# Helm Chart Values: Todo Chatbot Kubernetes Deployment
+# All values are configurable without modifying templates
+
+# Global replica count
+replicaCount: 2
+
+# Backend service configuration
+backend:
+  image: todo-backend:latest
+  imagePullPolicy: IfNotPresent  # REQUIRED for Minikube (FR-015)
+  replicas: 2
+  port: 8000
+
+  # Resource requests and limits (FR-014)
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  # Environment variables injected from ConfigMaps and Secrets
+  environment:
+    # These must be provided at helm install time
+    DATABASE_URL: ""  # REQUIRED: postgresql://user:pass@neon.tech/db
+    GROQ_API_KEY: ""  # REQUIRED: API key from Groq
+    BETTER_AUTH_SECRET: ""  # REQUIRED: Shared secret for JWT
+    KUBECTL_AI_KEY: ""  # OPTIONAL: kubectl-ai API key (for FR-017)
+
+  # Init container for DB readiness check (FR-019)
+  initContainer:
+    enabled: true
+    image: postgres:15-alpine
+    database:
+      host: neon.tech
+      port: 5432
+      checkCommand: pg_isready
+
+# Frontend service configuration
+frontend:
+  image: todo-frontend:latest
+  imagePullPolicy: IfNotPresent  # REQUIRED for Minikube (FR-015)
+  replicas: 2
+  port: 3000
+
+  # Resource requests and limits (FR-014)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+  # Environment variables (FR-018: Dynamic parameterization)
+  environment:
+    NEXT_PUBLIC_API_URL: http://todo-backend:8000
+    BETTER_AUTH_URL: ""  # REQUIRED: Dynamic based on access method (localhost:3000, todo.local:3000, etc.)
+    TRUSTED_ORIGINS: ""  # REQUIRED: Comma-separated list for Better Auth CORS
+
+# RBAC configuration for AI agents (FR-017)
+rbac:
+  create: true  # Create ServiceAccount and ClusterRole
+  serviceAccountName: todo-chatbot-agent
+
+# Kubernetes Ingress configuration (optional)
+ingress:
+  enabled: false  # Set to true only with minikube tunnel
+  hostname: todo.local
+  className: nginx  # Requires NGINX Ingress Controller in Minikube
+
+# Global secrets (created separately via kubectl or Helm)
+secrets:
+  createFromValues: true  # If true, create K8s Secret from values

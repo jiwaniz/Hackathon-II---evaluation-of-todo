@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "todo-chatbot.fullname" . }}-backend
+  labels:
+    {{- include "todo-chatbot.labels" . | nindent 4 }}
+    app: todo-backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "todo-chatbot.backend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "todo-chatbot.backend.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      # ServiceAccount with RBAC permissions for AI agents (FR-017)
+      serviceAccountName: {{ include "todo-chatbot.serviceAccountName" . }}
+
+      # Init container: Validate database connectivity before starting FastAPI (FR-019)
+      initContainers:
+      - name: db-readiness
+        image: {{ .Values.backend.initContainer.image }}
+        command: ['sh', '-c']
+        args:
+        - |
+          apk add --no-cache postgresql-client
+          MAX_RETRIES=30
+          RETRY_INTERVAL=2
+          DB_HOST={{ .Values.backend.initContainer.database.host }}
+          DB_PORT={{ .Values.backend.initContainer.database.port }}
+          DB_USER={{ .Values.backend.environment.DATABASE_URL | regexFind "://([^:]+):" | replace "://" "" }}
+          for i in $(seq 1 $MAX_RETRIES); do
+            if pg_isready -h $DB_HOST -p $DB_PORT -U $DB_USER 2>/dev/null; then
+              echo "✓ Database is ready"
+              exit 0
+            fi
+            echo "Database not ready. Attempt $i/$MAX_RETRIES. Waiting..."
+            sleep $RETRY_INTERVAL
+          done
+          echo "✗ Database not ready after $MAX_RETRIES attempts"
+          exit 1
+
+      # Main application container
+      containers:
+      - name: backend
+        image: "{{ .Values.backend.image }}"
+        imagePullPolicy: {{ .Values.backend.imagePullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.backend.port }}
+          protocol: TCP
+
+        # Environment variables from ConfigMaps and Secrets
+        envFrom:
+        - configMapRef:
+            name: {{ include "todo-chatbot.fullname" . }}-backend-config
+
+        # Sensitive values from Secrets
+        env:
+        - name: GROQ_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: GROQ_API_KEY
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: BETTER_AUTH_SECRET
+        - name: KUBECTL_AI_KEY
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: KUBECTL_AI_KEY
+              optional: true
+
+        # Resource requests and limits (FR-014)
+        resources:
+          requests:
+            cpu: {{ .Values.backend.resources.requests.cpu }}
+            memory: {{ .Values.backend.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.backend.resources.limits.cpu }}
+            memory: {{ .Values.backend.resources.limits.memory }}
+
+        # Liveness probe: Restart if /health fails
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        # Readiness probe: Only route traffic if /health returns 200
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: false
+
+      # Pod scheduling
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - todo-backend
+              topologyKey: kubernetes.io/hostname
