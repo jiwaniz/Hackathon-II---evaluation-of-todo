@@ -3,7 +3,7 @@
 # Implements health checks (FR-002, FR-014, FR-015)
 
 # Stage 1: Build Next.js application
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
 
 WORKDIR /app
 
@@ -20,12 +20,12 @@ COPY frontend/ .
 RUN npm run build
 
 # Stage 2: Production runtime
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
 # Install curl for health checks
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Copy only necessary files from build stage
 COPY --from=build /app/.next ./.next

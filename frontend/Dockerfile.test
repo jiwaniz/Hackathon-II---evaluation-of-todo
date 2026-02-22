@@ -1,0 +1,29 @@
+# Frontend Test Dockerfile - Lightweight for quick K8s testing
+# Single stage build for simplicity and speed
+
+FROM node:20-slim
+
+WORKDIR /app
+
+# No system dependencies needed - Node.js handles everything
+
+# Copy package files
+COPY frontend/package.json frontend/package-lock.json ./
+
+# Install dependencies (ci is faster than install for production)
+RUN npm ci --only=production
+
+# Copy source code
+COPY frontend/ .
+
+# Build Next.js app
+RUN npm run build
+
+EXPOSE 3000
+
+# Health check using Node.js
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000', (r) => { if (r.statusCode !== 200) throw new Error('Health check failed'); })" || exit 1
+
+# Start Next.js in production mode
+CMD ["npm", "start"]
