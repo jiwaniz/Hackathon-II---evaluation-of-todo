@@ -21,6 +21,12 @@ from routes.tags import router as tags_router
 setup_logging()
 logger = get_logger(__name__)
 
+# Debug: Log environment variables on startup
+logger.info(f"DATABASE_URL configured: {bool(settings.database_url)}")
+logger.info(f"SUPABASE_JWT_SECRET configured: {bool(settings.supabase_jwt_secret)}")
+logger.info(f"GOOGLE_API_KEY configured: {bool(settings.google_api_key)}")
+logger.info(f"GROQ_API_KEY configured: {bool(settings.groq_api_key)}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
