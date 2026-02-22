@@ -22,6 +22,7 @@ spec:
       serviceAccountName: {{ include "todo-chatbot.serviceAccountName" . }}
 
       # Init container: Validate database connectivity before starting FastAPI (FR-019)
+      {{- if .Values.backend.initContainer.enabled }}
       initContainers:
       - name: db-readiness
         image: {{ .Values.backend.initContainer.image }}
@@ -44,6 +45,7 @@ spec:
           done
           echo "✗ Database not ready after $MAX_RETRIES attempts"
           exit 1
+      {{- end }}
 
       # Main application container
       containers:
