@@ -9,6 +9,7 @@ import logging
 import sys
 from datetime import datetime
 
+from sqlalchemy import text
 from config import settings
 from database import get_engine
 
@@ -47,7 +48,7 @@ def test_database_connection():
     print("\n📡 Testing Database Connection:")
     try:
         with engine.connect() as conn:
-            result = conn.execute("SELECT 1")
+            result = conn.execute(text("SELECT 1"))
             print("   ✅ Connection successful")
             print(f"   Server time: {datetime.utcnow().isoformat()}")
     except Exception as e:
