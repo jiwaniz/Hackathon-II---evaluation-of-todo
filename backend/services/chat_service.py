@@ -13,8 +13,6 @@ Stateless request cycle:
 import json
 import logging
 
-from google import genai
-from google.genai import types
 from sqlmodel import Session
 
 from config import settings
@@ -51,8 +49,10 @@ Guidelines:
 """
 
 
-def _build_tool_declarations() -> list[types.FunctionDeclaration]:
-    """Build Gemini function declarations for MCP tools."""
+def _build_tool_declarations():
+    """Build Gemini function declarations for MCP tools (lazy import)."""
+    from google.genai import types
+
     return [
         types.FunctionDeclaration(
             name="add_task",
@@ -137,8 +137,9 @@ def _execute_tool(tool_name: str, args: dict, user_id: str) -> str:
     return handler(args)
 
 
-def _get_gemini_client() -> genai.Client:
-    """Create a Gemini client."""
+def _get_gemini_client():
+    """Create a Gemini client (lazy import to save memory)."""
+    from google import genai
     return genai.Client(api_key=settings.google_api_key)
 
 
@@ -234,6 +235,8 @@ async def _run_gemini_agent(messages: list[dict], user_id: str) -> tuple[str, li
     Returns:
         Tuple of (response_text, tool_calls_log)
     """
+    from google.genai import types
+
     client = _get_gemini_client()
 
     tools = types.Tool(function_declarations=_build_tool_declarations())
