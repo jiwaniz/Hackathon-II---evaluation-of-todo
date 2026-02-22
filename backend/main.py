@@ -21,12 +21,6 @@ from routes.tags import router as tags_router
 setup_logging()
 logger = get_logger(__name__)
 
-# Debug: Log environment variables on startup
-logger.info(f"DATABASE_URL configured: {bool(settings.database_url)}")
-logger.info(f"SUPABASE_JWT_SECRET configured: {bool(settings.supabase_jwt_secret)}")
-logger.info(f"GOOGLE_API_KEY configured: {bool(settings.google_api_key)}")
-logger.info(f"GROQ_API_KEY configured: {bool(settings.groq_api_key)}")
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,10 +28,8 @@ async def lifespan(app: FastAPI):
     # Startup
     try:
         logger.info(f"Starting Evolution of Todo API in {settings.environment} mode")
-        # Test database connection
-        from database import get_engine
-        engine = get_engine()
-        logger.info("✅ Database engine created successfully")
+        # Note: Database connection is tested lazily on first request
+        # This reduces memory usage on startup
     except Exception as e:
         logger.error(f"❌ Startup error: {e}", exc_info=True)
         raise
