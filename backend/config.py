@@ -1,10 +1,13 @@
 """Configuration management for the Evolution of Todo backend."""
 
+import logging
 import os
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -63,6 +66,30 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development mode."""
         return self.environment == "development"
+
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def validate_database_url(cls, v: str) -> str:
+        """Validate database URL format and log configuration."""
+        if not v or v == "postgresql://localhost/evolution_of_todo":
+            logger.warning("⚠️ Using default DATABASE_URL - set via env var in production")
+
+        if "postgresql://" not in v and "postgres://" not in v:
+            raise ValueError("DATABASE_URL must be a PostgreSQL connection string")
+
+        # Check for Neon-specific requirements
+        if "neon.tech" in v and "sslmode" not in v:
+            logger.warning("⚠️ Neon database detected but sslmode not set - adding ?sslmode=require")
+            if "?" in v:
+                v = v + "&sslmode=require"
+            else:
+                v = v + "?sslmode=require"
+
+        # Mask the URL for logging
+        masked_url = v.split("@")[-1] if "@" in v else "***"
+        logger.info(f"Database configured: {masked_url}")
+
+        return v
 
     class Config:
         env_file = ".env"

@@ -32,7 +32,15 @@ logger.info(f"GROQ_API_KEY configured: {bool(settings.groq_api_key)}")
 async def lifespan(app: FastAPI):
     """Application lifespan events for startup and shutdown."""
     # Startup
-    logger.info(f"Starting Evolution of Todo API in {settings.environment} mode")
+    try:
+        logger.info(f"Starting Evolution of Todo API in {settings.environment} mode")
+        # Test database connection
+        from database import get_engine
+        engine = get_engine()
+        logger.info("✅ Database engine created successfully")
+    except Exception as e:
+        logger.error(f"❌ Startup error: {e}", exc_info=True)
+        raise
     yield
     # Shutdown
     logger.info("Shutting down Evolution of Todo API")
